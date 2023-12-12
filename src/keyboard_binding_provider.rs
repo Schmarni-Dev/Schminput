@@ -1,39 +1,38 @@
-use std::borrow::BorrowMut;
-
-use bevy::{input::keyboard, prelude::*, utils::HashMap};
+use bevy::{prelude::*, utils::HashMap};
 
 use crate::ActionTrait;
 
 pub struct KeyboardBindingProvider;
 
-pub enum KeyboardActivationType {
-    JustPressed,
-    Held,
-    JustReleased,
+#[derive(Clone)]
+pub enum KeyBinding {
+    JustPressed(KeyCode),
+    Held(KeyCode),
+    JustReleased(KeyCode),
 }
 
+#[derive(Clone)]
 pub enum KeyboardBinding {
-    Simple(KeyboardActivationType, KeyCode),
+    Simple(KeyBinding),
     Number {
-        activation: KeyboardActivationType,
-        positive: KeyCode,
-        negative: KeyCode,
+        positive: KeyBinding,
+        negative: KeyBinding,
     },
     Dpad {
-        up: KeyCode,
-        down: KeyCode,
-        left: KeyCode,
-        right: KeyCode,
+        up: KeyBinding,
+        down: KeyBinding,
+        left: KeyBinding,
+        right: KeyBinding,
     },
 }
 
 #[derive(Resource, Default)]
-pub struct KeyboardBingings {
+pub struct KeyboardBindings {
     #[allow(clippy::type_complexity)]
     bindings: HashMap<(&'static str, &'static str), Vec<KeyboardBinding>>,
 }
 
-impl KeyboardBingings {
+impl KeyboardBindings {
     // I don't understand why this 'static is needed or why it works
     pub fn add_binding<T: 'static>(
         &mut self,
@@ -49,34 +48,33 @@ impl KeyboardBingings {
 
 impl Plugin for KeyboardBindingProvider {
     fn build(&self, app: &mut App) {
-        app.insert_resource(KeyboardBingings::default());
-        app.add_systems(PreUpdate, sync_keaboard_actions_bool);
-        app.add_systems(PreUpdate, sync_keaboard_actions_float);
-        app.add_systems(PreUpdate, sync_keaboard_actions_vec2);
+        app.insert_resource(KeyboardBindings::default());
+        app.add_systems(PreUpdate, sync_actions_bool);
+        app.add_systems(PreUpdate, sync_actions_f32);
+        app.add_systems(PreUpdate, sync_actions_vec2);
     }
 }
 
-fn sync_keaboard_actions_bool(
+fn sync_actions_bool(
     mut actions: Query<&mut dyn ActionTrait<T = bool>>,
-    bindings: Res<KeyboardBingings>,
+    bindings: Res<KeyboardBindings>,
     keyboard: Res<Input<KeyCode>>,
 ) {
     fn f(
         action: &dyn ActionTrait<T = bool>,
-        input_type: &KeyboardActivationType,
-        key: KeyCode,
+        input_type: KeyBinding,
         keyboard: &Input<KeyCode>,
     ) -> bool {
         match input_type {
-            KeyboardActivationType::JustPressed => {
+            KeyBinding::JustPressed(key) => {
                 let value = *action.get_value();
                 value || keyboard.just_pressed(key)
             }
-            KeyboardActivationType::Held => {
+            KeyBinding::Held(key) => {
                 let value = *action.get_value();
                 value || keyboard.pressed(key)
             }
-            KeyboardActivationType::JustReleased => {
+            KeyBinding::JustReleased(key) => {
                 let value = *action.get_value();
                 value || keyboard.just_released(key)
             }
@@ -90,9 +88,9 @@ fn sync_keaboard_actions_bool(
                 .unwrap_or(&Vec::new())
             {
                 #[allow(clippy::single_match)]
-                match binding {
-                    KeyboardBinding::Simple(input_type, key) => {
-                        let v = f(&*action, input_type, *key, &keyboard);
+                match binding.clone() {
+                    KeyboardBinding::Simple(input) => {
+                        let v = f(&*action, input, &keyboard);
                         action.set_value(v);
                     }
                     _ => (),
@@ -101,16 +99,16 @@ fn sync_keaboard_actions_bool(
         })
     });
 }
-fn sync_keaboard_actions_float(
+fn sync_actions_f32(
     mut actions: Query<&mut dyn ActionTrait<T = f32>>,
-    bindings: Res<KeyboardBingings>,
+    bindings: Res<KeyboardBindings>,
     keyboard: Res<Input<KeyCode>>,
 ) {
-    fn f(input_type: &KeyboardActivationType, key: KeyCode, keyboard: &Input<KeyCode>) -> f32 {
+    fn f(input_type: KeyBinding, keyboard: &Input<KeyCode>) -> f32 {
         match input_type {
-            KeyboardActivationType::JustPressed => keyboard.just_pressed(key) as u8 as f32,
-            KeyboardActivationType::Held => keyboard.pressed(key) as u8 as f32,
-            KeyboardActivationType::JustReleased => keyboard.just_released(key) as u8 as f32,
+            KeyBinding::JustPressed(key) => keyboard.just_pressed(key) as u8 as f32,
+            KeyBinding::Held(key) => keyboard.pressed(key) as u8 as f32,
+            KeyBinding::JustReleased(key) => keyboard.just_released(key) as u8 as f32,
         }
     }
     actions.par_iter_mut().for_each(|mut e| {
@@ -120,20 +118,16 @@ fn sync_keaboard_actions_float(
                 .get(&(action.action_key(), action.action_set_key()))
                 .unwrap_or(&Vec::new())
             {
-                match binding {
-                    KeyboardBinding::Simple(input_type, key) => {
+                match binding.clone() {
+                    KeyboardBinding::Simple(input) => {
                         let mut v = *action.get_value();
-                        v += f(input_type, *key, &keyboard);
+                        v += f(input, &keyboard);
                         action.set_value(v);
                     }
-                    KeyboardBinding::Number {
-                        activation,
-                        positive,
-                        negative,
-                    } => {
+                    KeyboardBinding::Number { positive, negative } => {
                         let mut v = *action.get_value();
-                        v += f(activation, *positive, &keyboard);
-                        v += f(activation, *negative, &keyboard) * -1f32;
+                        v += f(positive, &keyboard);
+                        v += f(negative, &keyboard) * -1f32;
                         action.set_value(v);
                     }
                     _ => (),
@@ -142,16 +136,16 @@ fn sync_keaboard_actions_float(
         })
     });
 }
-fn sync_keaboard_actions_vec2(
+fn sync_actions_vec2(
     mut actions: Query<&mut dyn ActionTrait<T = Vec2>>,
-    bindings: Res<KeyboardBingings>,
+    bindings: Res<KeyboardBindings>,
     keyboard: Res<Input<KeyCode>>,
 ) {
-    fn f(input_type: &KeyboardActivationType, key: KeyCode, keyboard: &Input<KeyCode>) -> f32 {
+    fn f(input_type: KeyBinding, keyboard: &Input<KeyCode>) -> f32 {
         match input_type {
-            KeyboardActivationType::JustPressed => keyboard.just_pressed(key) as u8 as f32,
-            KeyboardActivationType::Held => keyboard.pressed(key) as u8 as f32,
-            KeyboardActivationType::JustReleased => keyboard.just_released(key) as u8 as f32,
+            KeyBinding::JustPressed(key) => keyboard.just_pressed(key) as u8 as f32,
+            KeyBinding::Held(key) => keyboard.pressed(key) as u8 as f32,
+            KeyBinding::JustReleased(key) => keyboard.just_released(key) as u8 as f32,
         }
     }
     actions.par_iter_mut().for_each(|mut e| {
@@ -161,20 +155,16 @@ fn sync_keaboard_actions_vec2(
                 .get(&(action.action_key(), action.action_set_key()))
                 .unwrap_or(&Vec::new())
             {
-                match binding {
-                    KeyboardBinding::Simple(input_type, key) => {
+                match binding.clone() {
+                    KeyboardBinding::Simple(input) => {
                         let mut v = *action.get_value();
-                        v.x += f(input_type, *key, &keyboard);
+                        v.x += f(input, &keyboard);
                         action.set_value(v);
                     }
-                    KeyboardBinding::Number {
-                        activation,
-                        positive,
-                        negative,
-                    } => {
+                    KeyboardBinding::Number { positive, negative } => {
                         let mut v = *action.get_value();
-                        v.x += f(activation, *positive, &keyboard);
-                        v.x += f(activation, *negative, &keyboard) * -1f32;
+                        v.x += f(positive, &keyboard);
+                        v.x += f(negative, &keyboard) * -1f32;
                         action.set_value(v);
                     }
                     KeyboardBinding::Dpad {
@@ -184,10 +174,10 @@ fn sync_keaboard_actions_vec2(
                         right,
                     } => {
                         let mut v = *action.get_value();
-                        v.x += f(&KeyboardActivationType::Held, *up, &keyboard);
-                        v.x -= f(&KeyboardActivationType::Held, *down, &keyboard);
-                        v.y += f(&KeyboardActivationType::Held, *left, &keyboard);
-                        v.y -= f(&KeyboardActivationType::Held, *right, &keyboard);
+                        v.x += f(up, &keyboard);
+                        v.x -= f(down, &keyboard);
+                        v.y -= f(left, &keyboard);
+                        v.y += f(right, &keyboard);
                         action.set_value(v);
                     }
                 }

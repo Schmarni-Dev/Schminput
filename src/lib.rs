@@ -1,11 +1,34 @@
 pub mod keyboard_binding_provider;
+pub mod mouse_binding_provider;
+
+#[cfg(feature = "xr")]
+pub mod oxr_binding_provider;
 
 use bevy::prelude::*;
 use bevy_trait_query::RegisterExt;
 
 pub struct SchminputPlugin;
 
+impl Plugin for SchminputPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(PostUpdate, reset_actions);
+    }
+}
+fn reset_actions(mut input: Query<&mut dyn ErasedAction>) {
+    input
+        .par_iter_mut()
+        .for_each(|mut e| e.iter_mut().for_each(|mut a| a.reset_value()));
+}
+
 #[macro_export]
+/// new_action!(
+/// |   action_ident: ident, 
+/// |   action_type: Type,
+/// |   action_key: &'static str, 
+/// |   action_name: expression -> String,
+/// |   action_set_key: expression -> &'static str, 
+/// |   action_set_name: expression -> String
+/// )
 macro_rules! new_action {
     ($ident:ident, $type:ty, $key:literal, $name:expr, $set_key:expr, $set_name:expr) => {
         #[derive(Component, Default)]
@@ -79,12 +102,13 @@ impl<T: ActionTrait> ErasedAction for T {
 }
 
 pub trait SchminputApp {
-    fn register_action<T: ActionTrait + Component>(&mut self);
+    fn register_action<T: ActionTrait + Component>(&mut self) -> &mut Self;
 }
 
 impl SchminputApp for App {
-    fn register_action<T: ActionTrait + Component>(&mut self) {
+    fn register_action<T: ActionTrait + Component>(&mut self) -> &mut Self {
         self.register_component_as::<dyn ActionTrait<T = T::T>, T>();
         self.register_component_as::<dyn ErasedAction, T>();
+        self
     }
 }
