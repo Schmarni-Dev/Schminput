@@ -25,6 +25,7 @@ pub struct OXRBindingProvider;
 impl Plugin for OXRBindingProvider {
     fn build(&self, app: &mut App) {
         app.insert_resource(CachedXrActionToOXRActions(default()));
+        app.insert_resource(OXRSetupBindings { bindings:default() });
         app.add_systems(XrSetup, transfer_bindings);
         app.add_systems(
             PreUpdate,
