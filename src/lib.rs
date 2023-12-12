@@ -37,7 +37,7 @@ macro_rules! new_action {
             previous_data: $type,
         }
 
-        impl schminput_schmanager::ActionTrait for $ident {
+        impl bevy_schminput::ActionTrait for $ident {
             type T = $type;
             fn reset_value(&mut self) {
                 self.previous_data = self.data;

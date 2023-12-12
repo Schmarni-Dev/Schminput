@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use schminput_schmanager::{
+use bevy_schminput::{
     keyboard_binding_provider::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },

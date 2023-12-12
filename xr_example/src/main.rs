@@ -2,7 +2,7 @@ use std::f32::consts::TAU;
 
 use bevy::{prelude::*, diagnostic::FrameTimeDiagnosticsPlugin};
 use bevy_oxr::xr_input::trackers::{OpenXRTrackingRoot, OpenXRLeftController, OpenXRController, OpenXRTracker, OpenXRRightController};
-use schminput_schmanager::{
+use bevy_schminput::{
     keyboard_binding_provider::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },

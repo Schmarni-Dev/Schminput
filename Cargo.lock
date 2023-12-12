@@ -927,6 +927,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_schminput"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy-trait-query",
+ "bevy_oxr",
+ "openxr",
+]
+
+[[package]]
 name = "bevy_sprite"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1656,9 +1666,9 @@ name = "example"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_schminput",
  "color-eyre",
  "eyre",
- "schminput_schmanager",
 ]
 
 [[package]]
@@ -3027,16 +3037,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "schminput_schmanager"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy-trait-query",
- "bevy_oxr",
- "openxr",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3972,9 +3972,9 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_oxr",
+ "bevy_schminput",
  "color-eyre",
  "eyre",
- "schminput_schmanager",
 ]
 
 [[package]]
