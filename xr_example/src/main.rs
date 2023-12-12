@@ -7,7 +7,7 @@ use bevy_schminput::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },
     new_action,
-    oxr_binding_provider::{OXRBinding, OXRSetupBindings},
+    oxr_binding_provider::{OXRBinding, OXRSetupBindings, OXRBindingProvider},
     SchminputApp, SchminputPlugin,
 };
 
@@ -44,6 +44,7 @@ fn main() {
     app.register_action::<PlayerTurn>();
     app.add_plugins(DefaultPlugins);
     app.add_plugins(KeyboardBindingProvider);
+    app.add_plugins(OXRBindingProvider);
     app.add_plugins(SchminputPlugin);
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_systems(Startup, setup);
