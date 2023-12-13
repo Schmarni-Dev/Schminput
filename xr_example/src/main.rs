@@ -1,13 +1,20 @@
 use std::f32::consts::TAU;
 
-use bevy::{prelude::*, diagnostic::FrameTimeDiagnosticsPlugin};
-use bevy_oxr::xr_input::trackers::{OpenXRTrackingRoot, OpenXRLeftController, OpenXRController, OpenXRTracker, OpenXRRightController};
+use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
+use bevy_oxr::{
+    xr_init::{XrEnableStatus, XrPostSetup},
+    xr_input::trackers::{
+        OpenXRController, OpenXRHMD, OpenXRLeftController, OpenXRRightController, OpenXRTracker,
+        OpenXRTrackingRoot,
+    },
+    DefaultXrPlugins,
+};
 use bevy_schminput::{
     keyboard_binding_provider::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },
     new_action,
-    oxr_binding_provider::{OXRBinding, OXRSetupBindings, OXRBindingProvider},
+    oxr_binding_provider::{OXRBinding, OXRBindingProvider, OXRSetupBindings},
     SchminputApp, SchminputPlugin,
 };
 
@@ -42,19 +49,22 @@ fn main() {
     let mut app = App::new();
     app.register_action::<PlayerMove>();
     app.register_action::<PlayerTurn>();
-    app.add_plugins(DefaultPlugins);
+    app.add_plugins(DefaultXrPlugins);
     app.add_plugins(KeyboardBindingProvider);
     app.add_plugins(OXRBindingProvider);
     app.add_plugins(SchminputPlugin);
     app.add_plugins(FrameTimeDiagnosticsPlugin);
+    app.add_systems(XrPostSetup, xr_add_forward_ref);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
     app.add_systems(Startup, spawn_controllers_example);
-    app.add_systems(Update, run);
+    app.add_systems(
+        Update,
+        (apply_turning, apply_forward, apply_movement).chain(),
+    );
 
     app.run();
 }
-
 
 fn spawn_controllers_example(mut commands: Commands) {
     //left hand
@@ -72,20 +82,35 @@ fn spawn_controllers_example(mut commands: Commands) {
         SpatialBundle::default(),
     ));
 }
+fn apply_turning(mut actions: Query<(&PlayerTurn, &mut Transform)>, time: Res<Time>) {
+    for (player_turn, mut transform) in actions.iter_mut() {
+        transform.rotate_y(player_turn.data.clamp(-1.0, 1.0) * TAU * 0.5 * time.delta_seconds());
+    }
+}
 
-fn run(
-    actions: Query<(&PlayerMove, &PlayerTurn)>,
-    mut transform: Query<&mut Transform, With<OpenXRTrackingRoot>>,
+fn apply_forward(mut forward_ref: Query<(&Transform, &mut ForwardRef)>) {
+    for (transform, mut forward) in forward_ref.iter_mut() {
+        forward.forward = transform.forward();
+        forward.right = transform.right();
+    }
+}
+
+fn apply_movement(
+    mut actions: Query<(&PlayerMove, &mut Transform)>,
+    forward_ref: Query<&ForwardRef>,
     time: Res<Time>,
 ) {
-    let (player_move, player_turn) = actions.get_single().unwrap();
-    let mut transform = transform.get_single_mut().unwrap();
-    transform.rotate_y(player_turn.data.clamp(-1.0, 1.0) * TAU * 0.5 * time.delta_seconds());
-    let p_move = player_move.data.normalize_or_zero();
-    let mut forward = (transform.forward() * p_move.x) + (transform.right() * p_move.y);
-    forward.y = 0.0;
-    let forward = forward.normalize_or_zero();
-    transform.translation += forward * time.delta_seconds() * 5.0;
+    let forward_ref = match forward_ref.get_single() {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    for (player_move, mut transform) in actions.iter_mut() {
+        let p_move = player_move.data.normalize_or_zero();
+        let mut forward = (forward_ref.forward * p_move.x) + (forward_ref.right * p_move.y);
+        forward.y = 0.0;
+        let forward = forward.normalize_or_zero();
+        transform.translation += forward * time.delta_seconds() * 3.0;
+    }
 }
 
 fn setup_env(
@@ -112,6 +137,7 @@ fn setup(
     mut keyboard: ResMut<KeyboardBindings>,
     mut oxr: ResMut<OXRSetupBindings>,
     mut commands: Commands,
+    xr_enabled: Option<Res<XrEnableStatus>>,
 ) {
     let player_move = PlayerMove::default();
     let player_turn = PlayerTurn::default();
@@ -127,8 +153,8 @@ fn setup(
     keyboard.add_binding(
         &player_turn,
         KeyboardBinding::Number {
-            positive: KeyBinding::Held(KeyCode::E),
-            negative: KeyBinding::Held(KeyCode::Q),
+            positive: KeyBinding::Held(KeyCode::Q),
+            negative: KeyBinding::Held(KeyCode::E),
         },
     );
     oxr.add_binding(
@@ -145,5 +171,43 @@ fn setup(
             binding: "/user/hand/right/input/thumbstick/y",
         },
     );
-    commands.spawn((player_turn, player_move));
+
+    if xr_enabled.is_none() || xr_enabled.is_some_and(|v| *v == XrEnableStatus::Disabled) {
+        info!("Non Xr Mode");
+        let mut t = Transform::from_xyz(0.0, 1.8, 0.0);
+        t.rotate_x(TAU * -0.05);
+        let cam = commands
+            .spawn((Camera3dBundle::default(),))
+            .insert(t)
+            .id();
+        commands
+            .spawn((
+                SpatialBundle::default(),
+                OpenXRTrackingRoot,
+                ForwardRef::default(),
+                player_turn,
+                player_move,
+            ))
+            .push_children(&[cam]);
+    } else {
+        info!("Xr Mode");
+        commands.spawn((
+            SpatialBundle::default(),
+            OpenXRTrackingRoot,
+            player_turn,
+            player_move,
+        ));
+    }
+}
+
+fn xr_add_forward_ref(mut commands: Commands, hmd: Query<Entity, With<OpenXRHMD>>) {
+    commands
+        .entity(hmd.get_single().unwrap())
+        .insert(ForwardRef::default());
+}
+
+#[derive(Component, Default)]
+struct ForwardRef {
+    forward: Vec3,
+    right: Vec3,
 }
