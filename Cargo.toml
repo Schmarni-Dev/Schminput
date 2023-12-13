@@ -7,15 +7,16 @@ edition = "2021"
 
 [features]
 default = []
-xr = ["dep:bevy_oxr","dep:openxr"]
+xr = ["dep:bevy_oxr", "dep:openxr"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 resolver = "2"
-members = ["example","xr_example"]
+members = ["example", "xr_example"]
 
 [dependencies]
 bevy = "0.12.1"
 bevy-trait-query = "0.4.0"
-bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", optional = true }
+# bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", optional = true }
+bevy_oxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "new_action_types", optional = true }
 openxr = { version = "0.17.1", optional = true }

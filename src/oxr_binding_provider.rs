@@ -1,5 +1,4 @@
 // TODOS:
-// Velocities
 // Location/Velocity flags
 // Rumble like bevy
 use bevy::{
@@ -13,7 +12,7 @@ use bevy_oxr::{
     xr_input::{
         action_set_system,
         actions::{ActionHandednes, ActionType, SetupActionSets, XrActionSets, XrBinding},
-        QuatConv, Vec3Conv,
+        QuatConv, Vec2Conv, Vec3Conv,
     },
 };
 use openxr::{ActionState, AnyGraphics, Posef, Session};
@@ -25,7 +24,9 @@ pub struct OXRBindingProvider;
 impl Plugin for OXRBindingProvider {
     fn build(&self, app: &mut App) {
         app.insert_resource(CachedXrActionToOXRActions(default()));
-        app.insert_resource(OXRSetupBindings { bindings:default() });
+        app.insert_resource(OXRSetupBindings {
+            bindings: default(),
+        });
         app.add_systems(XrSetup, transfer_bindings);
         app.add_systems(
             PreUpdate,
@@ -34,6 +35,7 @@ impl Plugin for OXRBindingProvider {
                 sync_actions_f32,
                 sync_actions_vec2,
                 sync_actions_transform,
+                sync_actions_velocity,
             )
                 .run_if(xr_only())
                 .after(action_set_system),
@@ -77,10 +79,8 @@ fn sync_actions_vec2(
                 if let Ok(ActionState { current_state, .. }) =
                     oxr_value.state(&session, openxr::Path::NULL)
                 {
-                    let mut v = *action.get_value();
-                    let vec2 = Vec2::new(current_state.x, current_state.y);
-                    v += vec2;
-                    action.set_value(v);
+                    let v = *action.get_value();
+                    action.set_value(current_state.to_vec2() + v);
                 }
             }
         })
@@ -111,6 +111,37 @@ fn sync_actions_transform(
                         transform.translation = location.pose.position.to_vec3();
                         transform.rotation = location.pose.orientation.to_quat();
                         action.set_value(transform);
+                    }
+                }
+            }
+        })
+    });
+}
+
+fn sync_actions_velocity(
+    mut actions: Query<&mut dyn ActionTrait<T = Velocity>>,
+    action_sets: Res<XrActionSets>,
+    session: Res<XrSession>,
+    xr_input: Res<XrInput>,
+    frame_state: Res<XrFrameState>,
+) {
+    let s = Session::<AnyGraphics>::clone(&session);
+    actions.par_iter_mut().for_each(|mut e| {
+        e.iter_mut().for_each(|mut action| {
+            if let Ok(oxr_value) =
+                action_sets.get_action_posef(action.action_set_key(), action.action_key())
+            {
+                if let Ok(space) =
+                    oxr_value.create_space(s.clone(), openxr::Path::NULL, Posef::IDENTITY)
+                {
+                    if let Ok((_location, velocity)) = space.relate(
+                        &xr_input.stage,
+                        frame_state.lock().unwrap().predicted_display_time,
+                    ) {
+                        action.set_value(Velocity {
+                            linear: velocity.linear_velocity.to_vec3(),
+                            angular: velocity.angular_velocity.to_vec3(),
+                        });
                     }
                 }
             }
@@ -213,6 +244,16 @@ impl OXRSetupBindings {
     }
 }
 
+pub struct Velocity {
+    pub linear: Vec3,
+    pub angular: Vec3,
+}
+
+impl ActionTypeFromActionT for Velocity {
+    fn get_action_type() -> ActionType {
+        ActionType::PoseF
+    }
+}
 impl ActionTypeFromActionT for Transform {
     fn get_action_type() -> ActionType {
         ActionType::PoseF
