@@ -14,5 +14,5 @@ This will probably the same as [bevy_oxr](https://github.com/awtterpip/bevy_oxr)
 - [ ] add OpenXR Haptics support
 - [x] add OpenXR Velocity support
 - [ ] improve mouse support
-    - [ ] Relative Mouse Movements
+    - [x] Relative Mouse Movements
     - [ ] Window Global Mouse Position?

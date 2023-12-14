@@ -3,8 +3,7 @@ use bevy_schminput::{
     keyboard_binding_provider::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },
-    mouse_binding_provider::{MouseBinding, MouseBindingProvider, MouseBindings},
-    new_action, SchminputApp, SchminputPlugin,
+    basic_action, SchminputApp, SchminputPlugin, mouse::{mouse_binding_provider::{ MouseBindingProvider, MouseBinding}, MouseBindings}, mouse_action,
 };
 
 pub struct ExampleActionSet;
@@ -17,7 +16,16 @@ impl ExampleActionSet {
     }
 }
 
-new_action!(
+
+mouse_action!(
+    MouseAction,
+    "mouse_action",
+    "Mouse Action".into(),
+    ExampleActionSet::key(),
+    ExampleActionSet::name()
+);
+
+basic_action!(
     ExampleAction,
     Vec2,
     "example_action",
@@ -25,7 +33,7 @@ new_action!(
     ExampleActionSet::key(),
     ExampleActionSet::name()
 );
-new_action!(
+basic_action!(
     BoolAction,
     bool,
     "bool_action",
@@ -33,7 +41,7 @@ new_action!(
     ExampleActionSet::key(),
     ExampleActionSet::name()
 );
-new_action!(
+basic_action!(
     TransformAction,
     Transform,
     "bool_action",

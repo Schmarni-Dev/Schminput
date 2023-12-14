@@ -9,14 +9,7 @@ use bevy_oxr::{
     },
     DefaultXrPlugins,
 };
-use bevy_schminput::{
-    keyboard_binding_provider::{
-        KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
-    },
-    new_action,
-    oxr_binding_provider::{OXRBinding, OXRBindingProvider, OXRSetupBindings},
-    SchminputApp, SchminputPlugin,
-};
+use bevy_schminput::{mouse_action, prelude::*, mouse::{MouseBindings, motion::MouseMotionBindingProvider}};
 
 pub struct XrActionSet;
 impl XrActionSet {
@@ -28,7 +21,7 @@ impl XrActionSet {
     }
 }
 
-new_action!(
+basic_action!(
     PlayerMove,
     Vec2,
     "player_move",
@@ -36,11 +29,10 @@ new_action!(
     XrActionSet::key(),
     XrActionSet::name()
 );
-new_action!(
-    PlayerTurn,
-    f32,
-    "player_turn",
-    "Turn".into(),
+mouse_action!(
+    PlayerLook,
+    "player_look",
+    "Look".into(),
     XrActionSet::key(),
     XrActionSet::name()
 );
@@ -48,10 +40,14 @@ new_action!(
 fn main() {
     let mut app = App::new();
     app.register_action::<PlayerMove>();
-    app.register_action::<PlayerTurn>();
+    info!("Test");
+    app.register_action::<PlayerLook>();
+    info!("HMMMMM");
     app.add_plugins(DefaultXrPlugins);
     app.add_plugins(KeyboardBindingProvider);
     app.add_plugins(OXRBindingProvider);
+    app.add_plugins(MouseBindingProvider);
+    app.add_plugins(MouseMotionBindingProvider);
     app.add_plugins(SchminputPlugin);
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_systems(XrPostSetup, xr_add_forward_ref);
@@ -82,9 +78,10 @@ fn spawn_controllers_example(mut commands: Commands) {
         SpatialBundle::default(),
     ));
 }
-fn apply_turning(mut actions: Query<(&PlayerTurn, &mut Transform)>, time: Res<Time>) {
+fn apply_turning(mut actions: Query<(&PlayerLook, &mut Transform)>, time: Res<Time>) {
     for (player_turn, mut transform) in actions.iter_mut() {
-        transform.rotate_y(player_turn.data.clamp(-1.0, 1.0) * TAU * 0.5 * time.delta_seconds());
+        transform.rotate_y(player_turn.data.x * TAU * 0.5 * time.delta_seconds());
+        transform.rotate_local_x(player_turn.data.y * TAU * 0.5 * time.delta_seconds());
     }
 }
 
@@ -137,10 +134,13 @@ fn setup(
     mut keyboard: ResMut<KeyboardBindings>,
     mut oxr: ResMut<OXRSetupBindings>,
     mut commands: Commands,
+    mut mouse: ResMut<MouseBindings>,
     xr_enabled: Option<Res<XrEnableStatus>>,
 ) {
     let player_move = PlayerMove::default();
-    let player_turn = PlayerTurn::default();
+    let mut player_turn = PlayerLook::default();
+    player_turn.mouse_sens_x = -0.1;
+    player_turn.mouse_sens_y = -0.1;
     keyboard.add_binding(
         &player_move,
         KeyboardBinding::Dpad {
@@ -157,6 +157,7 @@ fn setup(
             negative: KeyBinding::Held(KeyCode::E),
         },
     );
+    mouse.add_motion_binding(&player_turn);
     oxr.add_binding(
         &player_move,
         OXRBinding {
@@ -177,15 +178,18 @@ fn setup(
         let mut t = Transform::from_xyz(0.0, 1.8, 0.0);
         t.rotate_x(TAU * -0.05);
         let cam = commands
-            .spawn((Camera3dBundle::default(),))
+            .spawn((
+                Camera3dBundle::default(),
+                player_turn,
+                ForwardRef::default(),
+            ))
             .insert(t)
             .id();
+
         commands
             .spawn((
                 SpatialBundle::default(),
                 OpenXRTrackingRoot,
-                ForwardRef::default(),
-                player_turn,
                 player_move,
             ))
             .push_children(&[cam]);
