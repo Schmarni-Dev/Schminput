@@ -784,6 +784,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_oxr"
+version = "0.1.0"
+source = "git+https://github.com/awtterpip/bevy_oxr#fcedb9c0c892915f9fb549f5530c698f39aa2283"
+dependencies = [
+ "anyhow",
+ "ash",
+ "bevy",
+ "futures-lite 2.1.0",
+ "mint",
+ "openxr",
+ "wgpu",
+ "wgpu-core",
+ "wgpu-hal",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -932,7 +948,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-trait-query",
- "bevy_oxr",
+ "bevy_oxr 0.1.0 (git+https://github.com/awtterpip/bevy_oxr)",
  "openxr",
 ]
 
@@ -3971,7 +3987,7 @@ name = "xr_example"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_oxr",
+ "bevy_oxr 0.1.0 (git+https://github.com/Schmarni-Dev/bevy_openxr?branch=new_action_types)",
  "bevy_schminput",
  "color-eyre",
  "eyre",

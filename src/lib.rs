@@ -80,7 +80,6 @@ macro_rules! gen_action_trait_impl {
                 self.data = default();
             }
             fn set_value(&mut self, value: Self::T) {
-                self.previous_data = self.data;
                 self.data = value;
             }
 
