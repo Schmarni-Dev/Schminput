@@ -17,6 +17,5 @@ members = ["example", "xr_example"]
 [dependencies]
 bevy = "0.12.1"
 bevy-trait-query = "0.4.0"
-# bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", optional = true }
-bevy_oxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "new_action_types", optional = true }
+bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", optional = true }
 openxr = { version = "0.17.1", optional = true }
