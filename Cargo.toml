@@ -1,7 +1,6 @@
 [package]
-
 name = "bevy_schminput"
-
+license = "MIT OR BSD-2-Clause-Patent OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
 
