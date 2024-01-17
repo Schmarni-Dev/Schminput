@@ -9,7 +9,11 @@ use bevy_oxr::{
     },
     DefaultXrPlugins,
 };
-use bevy_schminput::{mouse_action, prelude::*, mouse::{MouseBindings, motion::MouseMotionBindingProvider}};
+use bevy_schminput::{
+    mouse::{motion::MouseMotionBindingProvider, MouseBindings},
+    mouse_action,
+    prelude::*,
+};
 
 pub struct XrActionSet;
 impl XrActionSet {
@@ -187,11 +191,7 @@ fn setup(
             .id();
 
         commands
-            .spawn((
-                SpatialBundle::default(),
-                OpenXRTrackingRoot,
-                player_move,
-            ))
+            .spawn((SpatialBundle::default(), OpenXRTrackingRoot, player_move))
             .push_children(&[cam]);
     } else {
         info!("Xr Mode");

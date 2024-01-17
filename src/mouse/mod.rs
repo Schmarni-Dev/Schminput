@@ -38,4 +38,12 @@ impl MouseBindings {
         self.motion_bindings
             .insert((action.action_key(), action.action_set_key()));
     }
+    pub fn drop_bindings<T: 'static>(&mut self, action: &dyn ActionTrait<T = T>) {
+        self.bindings
+            .remove(&(action.action_key(), action.action_set_key()));
+    }
+    pub fn drop_motion_binding(&mut self, action: &dyn MouseMotionAction) {
+        self.motion_bindings
+            .remove(&(action.action_key(), action.action_set_key()));
+    }
 }

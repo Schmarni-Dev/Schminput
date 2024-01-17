@@ -1,9 +1,14 @@
 use bevy::prelude::*;
 use bevy_schminput::{
+    basic_action,
     keyboard_binding_provider::{
         KeyBinding, KeyboardBinding, KeyboardBindingProvider, KeyboardBindings,
     },
-    basic_action, SchminputApp, SchminputPlugin, mouse::{mouse_binding_provider::{ MouseBindingProvider, MouseBinding}, MouseBindings}, mouse_action,
+    mouse::{
+        mouse_binding_provider::{MouseBinding, MouseBindingProvider},
+        MouseBindings,
+    },
+    mouse_action, SchminputApp, SchminputPlugin,
 };
 
 pub struct ExampleActionSet;
@@ -15,7 +20,6 @@ impl ExampleActionSet {
         "example_action_set"
     }
 }
-
 
 mouse_action!(
     MouseAction,
