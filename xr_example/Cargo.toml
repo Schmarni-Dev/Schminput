@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", rev = "53af86b" }
 bevy_schminput = { path = "../", features = ["xr"] }
 bevy = "0.12.1"
 color-eyre = "0.6.2"
 eyre = "0.6.10"
-bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr" }

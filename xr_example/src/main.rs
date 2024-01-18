@@ -84,8 +84,8 @@ fn spawn_controllers_example(mut commands: Commands) {
 }
 fn apply_turning(mut actions: Query<(&PlayerLook, &mut Transform)>, time: Res<Time>) {
     for (player_turn, mut transform) in actions.iter_mut() {
-        transform.rotate_y(player_turn.data.x * TAU * 0.5 * time.delta_seconds());
-        transform.rotate_local_x(player_turn.data.y * TAU * 0.5 * time.delta_seconds());
+        transform.rotate_y(-player_turn.data.x * TAU * 0.5 * time.delta_seconds());
+        transform.rotate_local_x(-player_turn.data.y * TAU * 0.5 * time.delta_seconds());
     }
 }
 
@@ -107,7 +107,7 @@ fn apply_movement(
     };
     for (player_move, mut transform) in actions.iter_mut() {
         let p_move = player_move.data.normalize_or_zero();
-        let mut forward = (forward_ref.forward * p_move.x) + (forward_ref.right * p_move.y);
+        let mut forward = (forward_ref.forward * p_move.y) + (forward_ref.right * p_move.x);
         forward.y = 0.0;
         let forward = forward.normalize_or_zero();
         transform.translation += forward * time.delta_seconds() * 3.0;
@@ -143,8 +143,8 @@ fn setup(
 ) {
     let player_move = PlayerMove::default();
     let mut player_turn = PlayerLook::default();
-    player_turn.mouse_sens_x = -0.1;
-    player_turn.mouse_sens_y = -0.1;
+    player_turn.mouse_sens_x = 0.1;
+    player_turn.mouse_sens_y = 0.1;
     keyboard.add_binding(
         &player_move,
         KeyboardBinding::Dpad {

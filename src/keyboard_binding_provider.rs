@@ -178,10 +178,10 @@ fn sync_actions_vec2(
                         right,
                     } => {
                         let mut v = *action.get_value();
-                        v.x += f(up, &keyboard);
-                        v.x -= f(down, &keyboard);
-                        v.y -= f(left, &keyboard);
-                        v.y += f(right, &keyboard);
+                        v.y += f(up, &keyboard);
+                        v.y -= f(down, &keyboard);
+                        v.x -= f(left, &keyboard);
+                        v.x += f(right, &keyboard);
                         action.set_value(v);
                     }
                 }

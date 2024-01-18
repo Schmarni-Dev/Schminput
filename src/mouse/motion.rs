@@ -26,8 +26,8 @@ fn sync_mouse_moitions(
             .motion_bindings
             .contains(&(action.action_key(), action.action_set_key()))
         {
-            let mut v = delta.yx() + *action.get_value();
-            v.x *= -action.mouse_sens_x();
+            let mut v = delta + *action.get_value();
+            v.x *= action.mouse_sens_x();
             v.y *= action.mouse_sens_y();
             action.set_value(v);
         }
