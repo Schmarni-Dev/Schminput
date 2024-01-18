@@ -10,4 +10,4 @@ bevy_schminput = { path = "../", features = ["xr"] }
 bevy = "0.12.1"
 color-eyre = "0.6.2"
 eyre = "0.6.10"
-bevy_oxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "new_action_types" }
+bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr" }

@@ -47,7 +47,7 @@ fn main() {
     info!("Test");
     app.register_action::<PlayerLook>();
     info!("HMMMMM");
-    app.add_plugins(DefaultXrPlugins);
+    app.add_plugins(DefaultXrPlugins::default());
     app.add_plugins(KeyboardBindingProvider);
     app.add_plugins(OXRBindingProvider);
     app.add_plugins(MouseBindingProvider);
@@ -204,7 +204,7 @@ fn setup(
     }
 }
 
-fn xr_add_forward_ref(mut commands: Commands, hmd: Query<Entity, With<OpenXRHMD>>) {
+fn xr_add_forward_ref(mut commands: Commands, hmd: Query<Entity, With<OpenXRTrackingRoot>>) {
     commands
         .entity(hmd.get_single().unwrap())
         .insert(ForwardRef::default());
