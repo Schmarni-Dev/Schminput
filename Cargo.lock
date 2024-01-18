@@ -770,6 +770,24 @@ dependencies = [
 [[package]]
 name = "bevy_oxr"
 version = "0.1.0"
+source = "git+https://github.com/awtterpip/bevy_oxr?rev=53af86b#53af86b0739406fde574e0d4889d7713becaa455"
+dependencies = [
+ "anyhow",
+ "ash",
+ "bevy",
+ "futures-lite 2.2.0",
+ "jni 0.20.0",
+ "mint",
+ "ndk-context",
+ "openxr",
+ "wgpu",
+ "wgpu-core",
+ "wgpu-hal",
+]
+
+[[package]]
+name = "bevy_oxr"
+version = "0.1.0"
 source = "git+https://github.com/awtterpip/bevy_oxr#53af86b0739406fde574e0d4889d7713becaa455"
 dependencies = [
  "anyhow",
@@ -934,7 +952,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-trait-query",
- "bevy_oxr",
+ "bevy_oxr 0.1.0 (git+https://github.com/awtterpip/bevy_oxr?rev=53af86b)",
  "openxr",
 ]
 
@@ -4002,7 +4020,7 @@ name = "xr_example"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_oxr",
+ "bevy_oxr 0.1.0 (git+https://github.com/awtterpip/bevy_oxr)",
  "bevy_schminput",
  "color-eyre",
  "eyre",

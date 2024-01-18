@@ -8,7 +8,7 @@ use bevy::{
 use bevy_oxr::{
     input::XrInput,
     resources::{XrFrameState, XrSession},
-    xr_init::{xr_only, XrEnableStatus, XrSetup},
+    xr_init::{xr_only, XrSetup},
     xr_input::{
         action_set_system,
         actions::{ActionHandednes, ActionType, SetupActionSets, XrActionSets, XrBinding},
@@ -40,18 +40,8 @@ impl Plugin for OXRBindingProvider {
                 .run_if(xr_only())
                 .after(action_set_system),
         );
-        app.add_systems(PreUpdate, test);
     }
 }
-fn test(r: Option<Res<XrEnableStatus>>) {
-    let r = r.map(|r| match *r {
-        XrEnableStatus::Enabled => "enabled",
-        XrEnableStatus::Disabled => "disabled",
-        XrEnableStatus::Waiting => "waiting",
-    });
-    info!("{:?}", r);
-}
-
 #[derive(Resource)]
 struct CachedXrActionToOXRActions(HashMap<&'static str, (&'static str, &'static str)>);
 
