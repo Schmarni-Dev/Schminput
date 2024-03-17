@@ -10,8 +10,8 @@ use bevy_oxr::{
     resources::{XrFrameState, XrSession},
     xr_init::{xr_only, XrSetup},
     xr_input::{
-        action_set_system,
-        actions::{ActionHandednes, ActionType, SetupActionSets, XrActionSets, XrBinding},
+        
+        actions::{sync_actions,ActionHandednes, ActionType, SetupActionSets, XrActionSets, XrBinding},
         QuatConv, Vec2Conv, Vec3Conv,
     },
 };
@@ -38,7 +38,7 @@ impl Plugin for OXRBindingProvider {
                 sync_actions_velocity,
             )
                 .run_if(xr_only())
-                .after(action_set_system),
+                .after(sync_actions),
         );
     }
 }
@@ -105,7 +105,7 @@ fn sync_actions_transform(
                 {
                     if let Ok((location, _velocity)) = space.relate(
                         &xr_input.stage,
-                        frame_state.lock().unwrap().predicted_display_time,
+                        frame_state.predicted_display_time,
                     ) {
                         let mut transform = Transform::IDENTITY;
                         transform.translation = location.pose.position.to_vec3();
@@ -136,7 +136,7 @@ fn sync_actions_velocity(
                 {
                     if let Ok((_location, velocity)) = space.relate(
                         &xr_input.stage,
-                        frame_state.lock().unwrap().predicted_display_time,
+                        frame_state.predicted_display_time,
                     ) {
                         action.set_value(Velocity {
                             linear: velocity.linear_velocity.to_vec3(),

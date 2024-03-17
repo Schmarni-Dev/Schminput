@@ -62,12 +62,12 @@ impl Plugin for KeyboardBindingProvider {
 fn sync_actions_bool(
     mut actions: Query<&mut dyn ActionTrait<T = bool>>,
     bindings: Res<KeyboardBindings>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     fn f(
         action: &dyn ActionTrait<T = bool>,
         input_type: KeyBinding,
-        keyboard: &Input<KeyCode>,
+        keyboard: &ButtonInput<KeyCode>,
     ) -> bool {
         match input_type {
             KeyBinding::JustPressed(key) => {
@@ -106,9 +106,9 @@ fn sync_actions_bool(
 fn sync_actions_f32(
     mut actions: Query<&mut dyn ActionTrait<T = f32>>,
     bindings: Res<KeyboardBindings>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    fn f(input_type: KeyBinding, keyboard: &Input<KeyCode>) -> f32 {
+    fn f(input_type: KeyBinding, keyboard: &ButtonInput<KeyCode>) -> f32 {
         match input_type {
             KeyBinding::JustPressed(key) => keyboard.just_pressed(key) as u8 as f32,
             KeyBinding::Held(key) => keyboard.pressed(key) as u8 as f32,
@@ -143,9 +143,9 @@ fn sync_actions_f32(
 fn sync_actions_vec2(
     mut actions: Query<&mut dyn ActionTrait<T = Vec2>>,
     bindings: Res<KeyboardBindings>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    fn f(input_type: KeyBinding, keyboard: &Input<KeyCode>) -> f32 {
+    fn f(input_type: KeyBinding, keyboard: &ButtonInput<KeyCode>) -> f32 {
         match input_type {
             KeyBinding::JustPressed(key) => keyboard.just_pressed(key) as u8 as f32,
             KeyBinding::Held(key) => keyboard.pressed(key) as u8 as f32,

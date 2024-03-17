@@ -27,7 +27,7 @@ impl Plugin for MouseBindingProvider {
 fn sync_actions_bool(
     mut actions: Query<&mut dyn ActionTrait<T = bool>>,
     bindings: Res<MouseBindings>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) {
     actions.par_iter_mut().for_each(|mut e| {
         e.iter_mut().for_each(|mut action| {
@@ -59,7 +59,7 @@ fn sync_actions_bool(
 fn sync_actions_f32(
     mut actions: Query<&mut dyn ActionTrait<T = f32>>,
     bindings: Res<MouseBindings>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
 ) {
     actions.par_iter_mut().for_each(|mut e| {
         e.iter_mut().for_each(|mut action| {

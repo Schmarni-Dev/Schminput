@@ -14,7 +14,19 @@ resolver = "2"
 members = ["example", "xr_example"]
 
 [dependencies]
-bevy = { version = "0.12.1", default-features = false }
-bevy-trait-query = "0.4.0"
-bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", rev = "53af86b", optional = true, default-features = false }
-openxr = { git = "https://github.com/Ralith/openxrs", rev = "0177d2d", optional = true }
+bevy.workspace = true
+bevy-trait-query.workspace = true
+bevy_oxr = { workspace = true, optional = true }
+openxr = { workspace = true, optional = true }
+
+[workspace.dependencies]
+bevy = { version = "0.13", default-features = false }
+#bevy-trait-query = "0.4.0"
+# TODO: wait for update to bevy 0.13 i guess
+bevy-trait-query = { git = "https://github.com/RobWalt/bevy-trait-query", rev = "470e123" }
+bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", rev = "8e70df2" }
+openxr = "0.18"
+
+[dev-dependencies]
+
+bevy_oxr = { workspace = true,default-features = true }

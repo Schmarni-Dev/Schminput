@@ -88,15 +88,15 @@ fn setup(
     let bool = BoolAction::default();
     keyboard.add_binding(
         &bool,
-        KeyboardBinding::Simple(KeyBinding::JustPressed(KeyCode::C)),
+        KeyboardBinding::Simple(KeyBinding::JustPressed(KeyCode::KeyC)),
     );
     keyboard.add_binding(
         &example,
         KeyboardBinding::Dpad {
-            up: KeyBinding::Held(KeyCode::W),
-            down: KeyBinding::Held(KeyCode::S),
-            left: KeyBinding::Held(KeyCode::A),
-            right: KeyBinding::Held(KeyCode::D),
+            up: KeyBinding::Held(KeyCode::KeyW),
+            down: KeyBinding::Held(KeyCode::KeyS),
+            left: KeyBinding::Held(KeyCode::KeyA),
+            right: KeyBinding::Held(KeyCode::KeyD),
         },
     );
     mouse.add_binding(&bool, MouseBinding::JustPressed(MouseButton::Left));

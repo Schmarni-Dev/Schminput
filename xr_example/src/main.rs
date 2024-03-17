@@ -2,9 +2,9 @@ use std::f32::consts::TAU;
 
 use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
 use bevy_oxr::{
-    xr_init::{XrEnableStatus, XrPostSetup},
+    xr_init::{XrPostSetup, XrStatus},
     xr_input::trackers::{
-        OpenXRController, OpenXRHMD, OpenXRLeftController, OpenXRRightController, OpenXRTracker,
+        OpenXRController, OpenXRLeftController, OpenXRRightController, OpenXRTracker,
         OpenXRTrackingRoot,
     },
     DefaultXrPlugins,
@@ -91,8 +91,8 @@ fn apply_turning(mut actions: Query<(&PlayerLook, &mut Transform)>, time: Res<Ti
 
 fn apply_forward(mut forward_ref: Query<(&Transform, &mut ForwardRef)>) {
     for (transform, mut forward) in forward_ref.iter_mut() {
-        forward.forward = transform.forward();
-        forward.right = transform.right();
+        forward.forward = *transform.forward();
+        forward.right = *transform.right();
     }
 }
 
@@ -121,14 +121,14 @@ fn setup_env(
 ) {
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(5.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(Plane3d::new(Vec3::Y).mesh().size(5.0, 5.0)),
+        material: materials.add(StandardMaterial::from(Color::rgb(0.3, 0.5, 0.3))),
         ..default()
     });
     // cube
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Cube { size: 0.1 })),
-        material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+        mesh: meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1)))),
+        material: materials.add(StandardMaterial::from(Color::rgb(0.8, 0.7, 0.6))),
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
@@ -139,26 +139,28 @@ fn setup(
     mut oxr: ResMut<OXRSetupBindings>,
     mut commands: Commands,
     mut mouse: ResMut<MouseBindings>,
-    xr_enabled: Option<Res<XrEnableStatus>>,
+    xr_enabled: Option<Res<XrStatus>>,
 ) {
     let player_move = PlayerMove::default();
-    let mut player_turn = PlayerLook::default();
-    player_turn.mouse_sens_x = 0.1;
-    player_turn.mouse_sens_y = 0.1;
+    let player_turn = PlayerLook {
+        mouse_sens_x: 0.1,
+        mouse_sens_y: 0.1,
+        ..Default::default()
+    };
     keyboard.add_binding(
         &player_move,
         KeyboardBinding::Dpad {
-            up: KeyBinding::Held(KeyCode::W),
-            down: KeyBinding::Held(KeyCode::S),
-            left: KeyBinding::Held(KeyCode::A),
-            right: KeyBinding::Held(KeyCode::D),
+            up: KeyBinding::Held(KeyCode::KeyW),
+            down: KeyBinding::Held(KeyCode::KeyS),
+            left: KeyBinding::Held(KeyCode::KeyA),
+            right: KeyBinding::Held(KeyCode::KeyD),
         },
     );
     keyboard.add_binding(
         &player_turn,
         KeyboardBinding::Number {
-            positive: KeyBinding::Held(KeyCode::Q),
-            negative: KeyBinding::Held(KeyCode::E),
+            positive: KeyBinding::Held(KeyCode::KeyQ),
+            negative: KeyBinding::Held(KeyCode::KeyE),
         },
     );
     mouse.add_motion_binding(&player_turn);
@@ -177,7 +179,7 @@ fn setup(
         },
     );
 
-    if xr_enabled.is_none() || xr_enabled.is_some_and(|v| *v == XrEnableStatus::Disabled) {
+    if xr_enabled.is_none() || xr_enabled.is_some_and(|v| *v == XrStatus::Disabled) {
         info!("Non Xr Mode");
         let mut t = Transform::from_xyz(0.0, 1.8, 0.0);
         t.rotate_x(TAU * -0.05);
