@@ -108,8 +108,8 @@ pub struct BoolActionValue(pub bool);
 /// +X = Right, +Y = Up
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum InputAxis {
-    #[default]
     X,
+    #[default]
     Y,
 }
 
