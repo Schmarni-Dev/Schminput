@@ -15,7 +15,7 @@ members = ["example", "xr_example"]
 
 [dependencies]
 bevy.workspace = true
-bevy-trait-query.workspace = true
+# bevy-trait-query.workspace = true
 bevy_oxr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
 

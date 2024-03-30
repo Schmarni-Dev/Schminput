@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 bevy_schminput = { path = "../" }
-bevy.workspace = true
+bevy = { workspace = true, default-features = true }
 color-eyre = "0.6.2"
 eyre = "0.6.10"
