@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    BoolActionValue, ButtonInputAxis, ButtonInputAxisDirection, ButtonInputBeheavior,
+    BoolActionValue, InputAxis, InputAxisDirection, ButtonInputBeheavior,
     F32ActionValue, SchminputSet, Vec2ActionValue,
 };
 
@@ -22,7 +22,6 @@ pub fn sync_actions(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
-    info!("key_sync");
     for (bindings, mut bool_value, mut f32_value, mut vec2_value) in &mut action_query {
         for binding in &bindings.0 {
             let delta_mutiplier = match binding.premultipy_delta_time {
@@ -33,7 +32,7 @@ pub fn sync_actions(
                 button.0 |= binding.behavior.apply(&input, binding.key);
             }
             if let Some(float) = f32_value.as_mut() {
-                if binding.axis == ButtonInputAxis::X {
+                if binding.axis == InputAxis::X {
                     let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
 
                     float.0 += val * binding.axis_dir.as_multipier() * delta_mutiplier;
@@ -42,10 +41,10 @@ pub fn sync_actions(
             if let Some(vec) = vec2_value.as_mut() {
                 let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
                 match binding.axis {
-                    ButtonInputAxis::X => {
+                    InputAxis::X => {
                         vec.x += val * binding.axis_dir.as_multipier() * delta_mutiplier
                     }
-                    ButtonInputAxis::Y => {
+                    InputAxis::Y => {
                         vec.y += val * binding.axis_dir.as_multipier() * delta_mutiplier
                     }
                 };
@@ -67,8 +66,8 @@ impl KeyboardBindings {
 #[derive(Clone, Copy, Debug, Reflect)]
 pub struct KeyboardBinding {
     pub key: KeyCode,
-    pub axis: ButtonInputAxis,
-    pub axis_dir: ButtonInputAxisDirection,
+    pub axis: InputAxis,
+    pub axis_dir: InputAxisDirection,
     pub premultipy_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
     pub multiplier: f32,
@@ -87,22 +86,22 @@ impl KeyboardBinding {
     }
 
     pub fn x_axis(mut self) -> Self {
-        self.axis = ButtonInputAxis::X;
+        self.axis = InputAxis::X;
         self
     }
 
     pub fn y_axis(mut self) -> Self {
-        self.axis = ButtonInputAxis::Y;
+        self.axis = InputAxis::Y;
         self
     }
 
     pub fn positive_axis_dir(mut self) -> Self {
-        self.axis_dir = ButtonInputAxisDirection::Positive;
+        self.axis_dir = InputAxisDirection::Positive;
         self
     }
 
     pub fn negative_axis_dir(mut self) -> Self {
-        self.axis_dir = ButtonInputAxisDirection::Negative;
+        self.axis_dir = InputAxisDirection::Negative;
         self
     }
 

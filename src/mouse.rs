@@ -1,7 +1,7 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
-    BoolActionValue, ButtonInputAxis, ButtonInputAxisDirection, ButtonInputBeheavior,
+    BoolActionValue, InputAxis, InputAxisDirection, ButtonInputBeheavior,
     F32ActionValue, SchminputSet, Vec2ActionValue,
 };
 
@@ -35,7 +35,7 @@ pub fn sync_actions(
                 boolean.0 |= button.behavior.apply(&input, button.button);
             }
             if let Some(float) = f32_value.as_mut() {
-                if button.axis == ButtonInputAxis::X {
+                if button.axis == InputAxis::X {
                     let val = button.behavior.apply(&input, button.button) as u8 as f32;
 
                     float.0 += val * button.axis_dir.as_multipier() * delta_mutiplier;
@@ -113,8 +113,8 @@ impl MouseBindings {
 
 #[derive(Clone, Copy, Debug, Reflect)]
 pub struct MouseButtonBinding {
-    pub axis: ButtonInputAxis,
-    pub axis_dir: ButtonInputAxisDirection,
+    pub axis: InputAxis,
+    pub axis_dir: InputAxisDirection,
     pub button: MouseButton,
     pub premultipy_delta_time: bool,
     pub behavior: ButtonInputBeheavior,

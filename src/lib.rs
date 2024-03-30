@@ -1,3 +1,4 @@
+pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
 pub mod prelude;
@@ -105,42 +106,42 @@ pub struct BoolActionValue(pub bool);
 
 // there might be a better name for this
 /// +X = Right, +Y = Up
-#[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq)]
-pub enum ButtonInputAxis {
+#[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
+pub enum InputAxis {
     #[default]
     X,
     Y,
 }
 
-impl ButtonInputAxis {
+impl InputAxis {
     pub fn vec_axis(&self, vec: Vec2) -> f32 {
         match self {
-            ButtonInputAxis::X => vec.x,
-            ButtonInputAxis::Y => vec.y,
+            InputAxis::X => vec.x,
+            InputAxis::Y => vec.y,
         }
     }
     pub fn vec_axis_mut<'a>(&self, vec: &'a mut Vec2) -> &'a mut f32 {
         match self {
-            ButtonInputAxis::X => &mut vec.x,
-            ButtonInputAxis::Y => &mut vec.y,
+            InputAxis::X => &mut vec.x,
+            InputAxis::Y => &mut vec.y,
         }
     }
 }
 
 // there might be a better name for this
-#[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq)]
-pub enum ButtonInputAxisDirection {
+#[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
+pub enum InputAxisDirection {
     #[default]
     Positive,
     Negative,
 }
 
-impl ButtonInputAxisDirection {
+impl InputAxisDirection {
     #[inline(always)]
     pub fn as_multipier(&self) -> f32 {
         match self {
-            ButtonInputAxisDirection::Positive => 1f32,
-            ButtonInputAxisDirection::Negative => -1f32,
+            InputAxisDirection::Positive => 1f32,
+            InputAxisDirection::Negative => -1f32,
         }
     }
 }
