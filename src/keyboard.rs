@@ -24,7 +24,7 @@ pub fn sync_actions(
 ) {
     for (bindings, mut bool_value, mut f32_value, mut vec2_value) in &mut action_query {
         for binding in &bindings.0 {
-            let delta_mutiplier = match binding.premultipy_delta_time {
+            let delta_multiplier = match binding.premultiply_delta_time {
                 true => time.delta_seconds(),
                 false => 1.0,
             };
@@ -35,17 +35,17 @@ pub fn sync_actions(
                 if binding.axis == InputAxis::X {
                     let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
 
-                    float.0 += val * binding.axis_dir.as_multipier() * delta_mutiplier;
+                    float.0 += val * binding.axis_dir.as_multipier() * delta_multiplier;
                 }
             }
             if let Some(vec) = vec2_value.as_mut() {
                 let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
                 match binding.axis {
                     InputAxis::X => {
-                        vec.x += val * binding.axis_dir.as_multipier() * delta_mutiplier
+                        vec.x += val * binding.axis_dir.as_multipier() * delta_multiplier
                     }
                     InputAxis::Y => {
-                        vec.y += val * binding.axis_dir.as_multipier() * delta_mutiplier
+                        vec.y += val * binding.axis_dir.as_multipier() * delta_multiplier
                     }
                 };
             }
@@ -68,7 +68,7 @@ pub struct KeyboardBinding {
     pub key: KeyCode,
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
-    pub premultipy_delta_time: bool,
+    pub premultiply_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
     pub multiplier: f32,
 }
@@ -77,7 +77,7 @@ impl KeyboardBinding {
     pub fn new(key_code: KeyCode) -> KeyboardBinding {
         KeyboardBinding {
             key: key_code,
-            premultipy_delta_time: false,
+            premultiply_delta_time: false,
             multiplier: 1.0,
             axis: default(),
             axis_dir: default(),
@@ -111,7 +111,7 @@ impl KeyboardBinding {
     }
 
     pub fn premultiply_delta_time(mut self) -> KeyboardBinding {
-        self.premultipy_delta_time = true;
+        self.premultiply_delta_time = true;
         self
     }
 

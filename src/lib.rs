@@ -56,6 +56,7 @@ impl PluginGroup for DefaultSchmugins {
             .add(SchminputPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
+            .add(gamepad::GamepadPlugin)
     }
 }
 
@@ -146,7 +147,7 @@ impl InputAxisDirection {
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, Default)]
+#[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum ButtonInputBeheavior {
     JustPressed,
     #[default]

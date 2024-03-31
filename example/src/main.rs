@@ -1,9 +1,10 @@
-use bevy::prelude::*;
 use bevy::prelude::Camera3dBundle;
+use bevy::prelude::*;
 use bevy_schminput::{
-    keyboard::{KeyboardBinding, KeyboardBindings},
+    gamepad::{GamepadBinding, GamepadBindingDevice, GamepadBindings},
+    keyboard::KeyboardBindings,
     mouse::MouseBindings,
-    ActionHeaderBuilder, DefaultSchmugins, Vec2ActionValue,
+    ActionHeaderBuilder, BoolActionValue, DefaultSchmugins, Vec2ActionValue,
 };
 
 fn main() {
@@ -20,6 +21,8 @@ fn main() {
 struct MoveAction;
 #[derive(Component, Clone, Copy)]
 struct LookAction;
+#[derive(Component, Clone, Copy)]
+struct JumpAction;
 
 fn setup(mut cmds: Commands) {
     let mut move_e = ActionHeaderBuilder::new("move")
@@ -33,6 +36,19 @@ fn setup(mut cmds: Commands) {
             .add_binding(KbB::new(KeyCode::KeyS).y_axis().negative_axis_dir())
             .add_binding(KbB::new(KeyCode::KeyA).x_axis().negative_axis_dir())
             .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
+        GamepadBindings::default()
+            .add_binding(
+                GamepadBindingDevice::Any,
+                GamepadBinding::axis(GamepadAxisType::LeftStickX)
+                    .x_axis()
+                    .positive(),
+            )
+            .add_binding(
+                GamepadBindingDevice::Any,
+                GamepadBinding::axis(GamepadAxisType::LeftStickY)
+                    .y_axis()
+                    .positive(),
+            ),
         MoveAction,
     ));
     let mut look_e = ActionHeaderBuilder::new("look")
@@ -43,18 +59,34 @@ fn setup(mut cmds: Commands) {
         MouseBindings::default().delta_motion(),
         LookAction,
     ));
+    ActionHeaderBuilder::new("jump")
+        .with_name("Jump")
+        .build(&mut cmds)
+        .insert((
+            JumpAction,
+            BoolActionValue::default(),
+            GamepadBindings::default().add_binding(
+                GamepadBindingDevice::Any,
+                GamepadBinding::button(GamepadButtonType::South),
+            ),
+            KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
+        ));
     cmds.spawn(Camera3dBundle::default());
 }
 
 fn run(
-    input: Query<&Vec2ActionValue, With<MoveAction>>,
-    bools: Query<&Vec2ActionValue, With<LookAction>>,
+    move_action: Query<&Vec2ActionValue, With<MoveAction>>,
+    look_action: Query<&Vec2ActionValue, With<LookAction>>,
+    jump_action: Query<&BoolActionValue, With<JumpAction>>,
 ) {
-    for action in input.into_iter() {
+    for action in move_action.into_iter() {
         info!("move: {:?}", action);
     }
-    for action in bools.into_iter() {
+    for action in look_action.into_iter() {
         info!("look: {:?}", action);
+    }
+    for action in jump_action.into_iter() {
+        info!("jump: {:?}", action);
     }
 }
 
