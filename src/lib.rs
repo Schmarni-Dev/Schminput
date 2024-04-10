@@ -147,12 +147,6 @@ impl InputAxisDirection {
     }
 }
 
-pub enum HapticActionType {
-    Weak,
-    Strong,
-    Frequency(f32),
-}
-
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum ButtonInputBeheavior {
     JustPressed,
