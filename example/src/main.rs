@@ -1,7 +1,12 @@
+use std::time::Duration;
+
 use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
 use bevy_schminput::{
-    gamepad::{GamepadBinding, GamepadBindingDevice, GamepadBindings},
+    gamepad::{
+        GamepadBinding, GamepadBindingDevice, GamepadBindings, GamepadHapticOutput,
+        GamepadHapticOutputBindings,
+    },
     keyboard::KeyboardBindings,
     mouse::MouseBindings,
     ActionHeaderBuilder, BoolActionValue, DefaultSchmugins, Vec2ActionValue,
@@ -23,6 +28,8 @@ struct MoveAction;
 struct LookAction;
 #[derive(Component, Clone, Copy)]
 struct JumpAction;
+#[derive(Component, Clone, Copy)]
+struct JumpHapticAction;
 
 fn setup(mut cmds: Commands) {
     let mut move_e = ActionHeaderBuilder::new("move")
@@ -57,6 +64,19 @@ fn setup(mut cmds: Commands) {
     look_e.insert((
         Vec2ActionValue::default(),
         MouseBindings::default().delta_motion(),
+        GamepadBindings::default()
+            .add_binding(
+                GamepadBindingDevice::Any,
+                GamepadBinding::axis(GamepadAxisType::RightStickX)
+                    .x_axis()
+                    .positive(),
+            )
+            .add_binding(
+                GamepadBindingDevice::Any,
+                GamepadBinding::axis(GamepadAxisType::RightStickY)
+                    .y_axis()
+                    .positive(),
+            ),
         LookAction,
     ));
     ActionHeaderBuilder::new("jump")
@@ -71,6 +91,14 @@ fn setup(mut cmds: Commands) {
             ),
             KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
         ));
+    ActionHeaderBuilder::new("jump_haptic")
+        .with_name("Jump Haptic Feedback")
+        .build(&mut cmds)
+        .insert((
+            JumpHapticAction,
+            GamepadHapticOutput::default(),
+            GamepadHapticOutputBindings::default().weak(GamepadBindingDevice::Any),
+        ));
     cmds.spawn(Camera3dBundle::default());
 }
 
@@ -78,6 +106,7 @@ fn run(
     move_action: Query<&Vec2ActionValue, With<MoveAction>>,
     look_action: Query<&Vec2ActionValue, With<LookAction>>,
     jump_action: Query<&BoolActionValue, With<JumpAction>>,
+    mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
 ) {
     for action in move_action.into_iter() {
         info!("move: {:?}", action);
@@ -87,6 +116,12 @@ fn run(
     }
     for action in jump_action.into_iter() {
         info!("jump: {:?}", action);
+        if action.0 {
+            //panics if action doesn't exist
+            jump_haptic_action
+                .single_mut()
+                .add(Duration::from_millis(50), 1.0);
+        }
     }
 }
 

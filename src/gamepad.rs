@@ -1,4 +1,10 @@
-use bevy::{prelude::*, utils::HashMap};
+use std::time::Duration;
+
+use bevy::{
+    input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
+    prelude::*,
+    utils::HashMap,
+};
 
 use crate::{
     BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
@@ -9,7 +15,70 @@ pub struct GamepadPlugin;
 
 impl Plugin for GamepadPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, sync_actions.in_set(SchminputSet::SyncActions));
+        app.add_systems(
+            PreUpdate,
+            sync_actions.in_set(SchminputSet::SyncInputActions),
+        );
+        app.add_systems(PreUpdate, clear_haptic.in_set(SchminputSet::ClearValues));
+        app.add_systems(
+            PostUpdate,
+            sync_haptics.in_set(SchminputSet::SyncOutputActions),
+        );
+    }
+}
+
+fn clear_haptic(mut query: Query<&mut GamepadHapticOutput>) {
+    for mut out in &mut query {
+        out.haptic_feedbacks.clear();
+    }
+}
+
+fn sync_haptics(
+    mut gamepad_haptic_event: EventWriter<GamepadRumbleRequest>,
+    haptic_query: Query<(&GamepadHapticOutputBindings, &GamepadHapticOutput)>,
+    gamepads: Res<Gamepads>,
+) {
+    for (bindings, out) in &haptic_query {
+        for (device, binding) in bindings
+            .bindings
+            .iter()
+            .flat_map(|(device, bindings)| bindings.iter().map(|b| (*device, b)))
+        {
+            match device {
+                GamepadBindingDevice::Any => {
+                    for gamepad in gamepads.iter() {
+                        for e in &out.haptic_feedbacks {
+                            gamepad_haptic_event.send(match e {
+                                GamepadHapticValue::Add {
+                                    duration,
+                                    intensity,
+                                } => GamepadRumbleRequest::Add {
+                                    duration: *duration,
+                                    intensity: binding.as_rumble_intensity(*intensity),
+                                    gamepad,
+                                },
+                                GamepadHapticValue::Stop => todo!(),
+                            });
+                        }
+                    }
+                }
+                GamepadBindingDevice::Gamepad(gamepad) => {
+                    for e in &out.haptic_feedbacks {
+                        gamepad_haptic_event.send(match e {
+                            GamepadHapticValue::Add {
+                                duration,
+                                intensity,
+                            } => GamepadRumbleRequest::Add {
+                                duration: *duration,
+                                intensity: binding.as_rumble_intensity(*intensity),
+                                gamepad,
+                            },
+                            GamepadHapticValue::Stop => todo!(),
+                        });
+                    }
+                }
+            };
+        }
     }
 }
 
@@ -133,6 +202,71 @@ fn handle_gamepad_inputs(
                 }
             }
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash)]
+pub enum GamepadHapticType {
+    Weak,
+    Strong,
+}
+
+impl GamepadHapticType {
+    pub fn as_rumble_intensity(&self, intensity: f32) -> GamepadRumbleIntensity {
+        match self {
+            GamepadHapticType::Weak => GamepadRumbleIntensity::weak_motor(intensity),
+            GamepadHapticType::Strong => GamepadRumbleIntensity::strong_motor(intensity),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Reflect, PartialEq)]
+pub enum GamepadHapticValue {
+    Add { duration: Duration, intensity: f32 },
+    Stop,
+}
+
+#[derive(Clone, Component, Debug, Reflect, Default)]
+pub struct GamepadHapticOutputBindings {
+    pub bindings: HashMap<GamepadBindingDevice, Vec<GamepadHapticType>>,
+}
+
+impl GamepadHapticOutputBindings {
+    pub fn new() -> GamepadHapticOutputBindings {
+        GamepadHapticOutputBindings::default()
+    }
+    pub fn weak(mut self, device: GamepadBindingDevice) -> Self {
+        self.bindings
+            .entry(device)
+            .or_default()
+            .push(GamepadHapticType::Weak);
+        self
+    }
+    pub fn strong(mut self, device: GamepadBindingDevice) -> Self {
+        self.bindings
+            .entry(device)
+            .or_default()
+            .push(GamepadHapticType::Strong);
+        self
+    }
+}
+
+#[derive(Clone, Component, Debug, Reflect, Default)]
+pub struct GamepadHapticOutput {
+    pub haptic_feedbacks: Vec<GamepadHapticValue>,
+}
+
+impl GamepadHapticOutput {
+    pub fn add(&mut self, duration: Duration, intensity: f32) -> &mut Self {
+        self.haptic_feedbacks.push(GamepadHapticValue::Add {
+            duration,
+            intensity,
+        });
+        self
+    }
+    pub fn stop(&mut self) -> &mut Self {
+        self.haptic_feedbacks.push(GamepadHapticValue::Stop);
+        self
     }
 }
 

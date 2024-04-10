@@ -9,8 +9,9 @@ use bevy::{app::PluginGroupBuilder, ecs::system::EntityCommands, prelude::*};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
 pub enum SchminputSet {
-    CleanValues,
-    SyncActions,
+    ClearValues,
+    SyncInputActions,
+    SyncOutputActions,
 }
 
 pub struct SchminputPlugin;
@@ -19,15 +20,14 @@ impl Plugin for SchminputPlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PreUpdate,
-            (SchminputSet::CleanValues, SchminputSet::SyncActions).chain(),
+            (SchminputSet::ClearValues, SchminputSet::SyncInputActions).chain(),
         );
+        // Probably not needed, but for reference,
+        app.configure_sets(PostUpdate, SchminputSet::SyncOutputActions);
 
-        // app.add_systems(First, || info!("First"));
-        // app.add_systems(Last, || info!("Last"));
-
-        app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::CleanValues));
-        app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::CleanValues));
-        app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::CleanValues));
+        app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
+        app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
+        app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
     }
 }
 
@@ -145,6 +145,12 @@ impl InputAxisDirection {
             InputAxisDirection::Negative => -1f32,
         }
     }
+}
+
+pub enum HapticActionType {
+    Weak,
+    Strong,
+    Frequency(f32),
 }
 
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]

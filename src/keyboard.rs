@@ -7,7 +7,7 @@ use crate::{
 
 impl Plugin for KeyboardPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, sync_actions.in_set(SchminputSet::SyncActions));
+        app.add_systems(PreUpdate, sync_actions.in_set(SchminputSet::SyncInputActions));
     }
 }
 
