@@ -3,9 +3,6 @@ An in-progress Action Based Input Manager for bevy
 
 designed with [bevy_oxr](https://github.com/awtterpip/bevy_oxr) in mind
 
-## TODO
-- [ ] bevy_oxr integration
-
 ## License
 
 Unless otherwise specified, all code in this repository is triple-licensed under

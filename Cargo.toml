@@ -6,7 +6,7 @@ edition = "2021"
 
 [features]
 default = []
-xr = ["dep:bevy_oxr", "dep:openxr"]
+xr = ["dep:bevy_openxr", "dep:bevy_xr", "dep:openxr"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
@@ -16,17 +16,18 @@ members = ["example", "xr_example"]
 [dependencies]
 bevy.workspace = true
 # bevy-trait-query.workspace = true
-bevy_oxr = { workspace = true, optional = true }
+bevy_openxr = { workspace = true, optional = true }
+bevy_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
 
 [workspace.dependencies]
 bevy = { version = "0.13", default-features = false }
-#bevy-trait-query = "0.4.0"
-# TODO: wait for update to bevy 0.13 i guess
-bevy-trait-query = { git = "https://github.com/RobWalt/bevy-trait-query", rev = "470e123" }
-bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", rev = "c6d0686" }
+bevy_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "action-binding-and-attaching-systems", package = "bevy_openxr" }
+bevy_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "action-binding-and-attaching-systems", package = "bevy_xr" }
 openxr = "0.18"
 
-[dev-dependencies]
+# bevy_openxr = { path = "../bevy_oxr/crates/bevy_openxr", package = "bevy_openxr" }
+# bevy_xr = { path = "../bevy_oxr/crates/bevy_xr", package = "bevy_xr" }
 
-bevy_oxr = { workspace = true,default-features = true }
+[dev-dependencies]
+bevy_openxr = { workspace = true, default-features = true }

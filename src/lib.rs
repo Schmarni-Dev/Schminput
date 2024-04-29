@@ -2,6 +2,8 @@ pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
 pub mod prelude;
+#[cfg(feature = "xr")]
+pub mod openxr;
 
 use std::{borrow::Cow, hash::Hash};
 
@@ -42,7 +44,6 @@ fn clean_f32(mut query: Query<&mut F32ActionValue>) {
     }
 }
 fn clean_vec2(mut query: Query<&mut Vec2ActionValue>) {
-    info!("clean_vec2");
     for mut val in &mut query {
         val.0 = Vec2::ZERO;
     }
@@ -57,6 +58,7 @@ impl PluginGroup for DefaultSchmugins {
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin)
+            .add(openxr::OxrInputPlugin)
     }
 }
 
@@ -66,14 +68,22 @@ impl PluginGroup for DefaultSchmugins {
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref)]
 pub struct ActionSet(pub Entity);
 
+/// The Display name of the Action Set.
+#[derive(Debug, Clone, Component, Reflect, Deref)]
+pub struct LocalizedActionSetName(pub Cow<'static, str>);
+
+/// This needs to be a unique identifier that describes the Action Set.
+#[derive(Debug, Clone, Component, Reflect, Deref)]
+pub struct ActionSetName(pub Cow<'static, str>);
+
 /// The Display name of the Action.
 #[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct ActionName(pub Cow<'static, str>);
+pub struct LocalizedActionName(pub Cow<'static, str>);
 
 /// This needs to be a unique identifier that describes the action.
 /// If using an ActionSet this only needs to be unique in that Set.
 #[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct ActionId(pub Cow<'static, str>);
+pub struct ActionName(pub Cow<'static, str>);
 
 /// +X: Right, +Y: Up
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
@@ -169,22 +179,48 @@ impl ButtonInputBeheavior {
     }
 }
 
+pub struct ActionSetHeaderBuilder {
+    id: ActionSetName,
+    name: Option<LocalizedActionSetName>,
+}
+
+impl ActionSetHeaderBuilder {
+    pub fn new(id: impl Into<Cow<'static, str>>) -> ActionSetHeaderBuilder {
+        ActionSetHeaderBuilder {
+            id: ActionSetName(id.into()),
+            name: None,
+        }
+    }
+    pub fn with_name(mut self, name: impl Into<Cow<'static, str>>) -> Self {
+        self.name = Some(LocalizedActionSetName(name.into()));
+        self
+    }
+    pub fn build<'a>(self, cmds: &'a mut Commands) -> EntityCommands<'a> {
+        let mut e_cmds = cmds.spawn(self.id);
+        if let Some(name) = self.name {
+            e_cmds.insert(name);
+        }
+
+        e_cmds
+    }
+}
+
 pub struct ActionHeaderBuilder {
-    id: ActionId,
-    name: Option<ActionName>,
+    id: ActionName,
+    name: Option<LocalizedActionName>,
     set: Option<ActionSet>,
 }
 
 impl ActionHeaderBuilder {
     pub fn new(id: impl Into<Cow<'static, str>>) -> ActionHeaderBuilder {
         ActionHeaderBuilder {
-            id: ActionId(id.into()),
+            id: ActionName(id.into()),
             name: None,
             set: None,
         }
     }
     pub fn with_name(mut self, name: impl Into<Cow<'static, str>>) -> Self {
-        self.name = Some(ActionName(name.into()));
+        self.name = Some(LocalizedActionName(name.into()));
         self
     }
     pub fn with_set(mut self, set: Entity) -> Self {
@@ -195,6 +231,9 @@ impl ActionHeaderBuilder {
         let mut e_cmds = cmds.spawn(self.id);
         if let Some(name) = self.name {
             e_cmds.insert(name);
+        }
+        if let Some(set) = self.set {
+            e_cmds.insert(set);
         }
 
         e_cmds

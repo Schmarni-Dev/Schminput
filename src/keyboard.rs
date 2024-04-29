@@ -53,7 +53,7 @@ pub fn sync_actions(
     }
 }
 
-#[derive(Clone, Debug, Default, DerefMut, Deref, Component, Reflect)]
+#[derive(Clone, Debug, Default, Component, Reflect)]
 pub struct KeyboardBindings(pub Vec<KeyboardBinding>);
 
 impl KeyboardBindings {
