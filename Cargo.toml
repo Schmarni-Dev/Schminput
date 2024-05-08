@@ -22,8 +22,8 @@ openxr = { workspace = true, optional = true }
 
 [workspace.dependencies]
 bevy = { version = "0.13", default-features = false }
-bevy_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "action-binding-and-attaching-systems", package = "bevy_openxr" }
-bevy_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "action-binding-and-attaching-systems", package = "bevy_xr" }
+bevy_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "handtracking", package = "bevy_openxr" }
+bevy_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "handtracking", package = "bevy_xr" }
 openxr = "0.18"
 
 # bevy_openxr = { path = "../bevy_oxr/crates/bevy_openxr", package = "bevy_openxr" }

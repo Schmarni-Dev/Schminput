@@ -1,14 +1,13 @@
-use std::{borrow::Cow, ops::Deref};
+use std::borrow::Cow;
 
 use bevy::{prelude::*, utils::HashMap};
 use bevy_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
-    resources::{OxrInstance, OxrSession, OxrStage, OxrTime},
+    reference_space::{OxrPrimaryReferenceSpace, OxrReferenceSpace},
+    resources::{OxrInstance, OxrSession, OxrTime},
 };
-use bevy_xr::session::{
-    session_running, status_changed_to, XrSharedStatus, XrStatus, XrStatusChanged,
-};
+use bevy_xr::session::{session_running, status_changed_to, XrStatus};
 use openxr::{Posef, SpaceLocationFlags};
 
 use crate::{
@@ -161,12 +160,14 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut PoseActionValue>,
         Option<&mut SetPoseOfEntity>,
+        Option<&OxrReferenceSpace>,
     )>,
     mut transform_query: Query<&mut Transform>,
-    stage: Res<OxrStage>,
+    primary_ref_space: Res<OxrPrimaryReferenceSpace>,
     time: Res<OxrTime>,
 ) {
-    for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity) in &mut query {
+    for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity, ref_space) in &mut query
+    {
         match action.as_mut() {
             OxrAction::Bool(action) => {
                 match action.state(&session, openxr::Path::NULL) {
@@ -206,6 +207,10 @@ fn sync_input_actions(
                 };
             }
             OxrAction::Pose(action, space) => {
+                let ref_space = match ref_space {
+                    Some(s) => &s.0,
+                    None => primary_ref_space.0.as_ref(),
+                };
                 let space = match space {
                     Some(s) => s,
                     None => {
@@ -225,7 +230,7 @@ fn sync_input_actions(
                         space.as_mut().expect("Should be impossible to hit")
                     }
                 };
-                let pose = match space.locate(&stage, **time) {
+                let pose = match space.locate(ref_space, **time) {
                     Ok(pose) => pose,
                     Err(e) => {
                         warn!("Unable to Locate Action Space: {}", e.to_string());

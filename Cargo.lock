@@ -734,7 +734,7 @@ dependencies = [
 [[package]]
 name = "bevy_openxr"
 version = "0.1.0"
-source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=action-binding-and-attaching-systems#9cb237e88f31d85038d448e7865108e62011e59d"
+source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=handtracking#44e909a4e1369f2c55be2711656c382dffff1457"
 dependencies = [
  "ash",
  "bevy",
@@ -1087,7 +1087,7 @@ dependencies = [
 [[package]]
 name = "bevy_xr"
 version = "0.1.0"
-source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=action-binding-and-attaching-systems#9cb237e88f31d85038d448e7865108e62011e59d"
+source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=handtracking#44e909a4e1369f2c55be2711656c382dffff1457"
 dependencies = [
  "bevy",
  "bevy_xr_macros",
@@ -1096,7 +1096,7 @@ dependencies = [
 [[package]]
 name = "bevy_xr_macros"
 version = "0.1.0"
-source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=action-binding-and-attaching-systems#9cb237e88f31d85038d448e7865108e62011e59d"
+source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=handtracking#44e909a4e1369f2c55be2711656c382dffff1457"
 dependencies = [
  "proc-macro2",
  "quote",

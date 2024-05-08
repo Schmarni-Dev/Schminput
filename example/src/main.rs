@@ -3,16 +3,7 @@ use std::time::Duration;
 use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
 use bevy_schminput::prelude::*;
-use bevy_schminput::{
-    //     gamepad::{
-    //         GamepadBinding, GamepadBindingDevice, GamepadBindings, GamepadHapticOutput,
-    //         GamepadHapticOutputBindings,
-    //     },
-    //     keyboard::KeyboardBindings,
-    //     mouse::MouseBindings,
-    //     ActionHeaderBuilder, BoolActionValue, DefaultSchmugins, Vec2ActionValue,
-    DefaultSchmugins,
-};
+use bevy_schminput::DefaultSchmugins;
 
 fn main() {
     let mut app = App::new();
