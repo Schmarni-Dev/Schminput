@@ -23,7 +23,6 @@ fn main() {
     app.add_plugins(bevy_openxr::add_xr_plugins(DefaultPlugins));
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_plugins(bevy_schminput::DefaultSchmugins);
-    app.add_plugins(bevy_schminput::openxr::OxrInputPlugin);
     // app.add_systems(XrPostSetup, xr_add_forward_ref);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);

@@ -1,9 +1,9 @@
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
-pub mod prelude;
 #[cfg(feature = "xr")]
 pub mod openxr;
+pub mod prelude;
 
 use std::{borrow::Cow, hash::Hash};
 
@@ -53,12 +53,15 @@ pub struct DefaultSchmugins;
 
 impl PluginGroup for DefaultSchmugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        PluginGroupBuilder::start::<DefaultSchmugins>()
+        let p = PluginGroupBuilder::start::<DefaultSchmugins>()
             .add(SchminputPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
-            .add(gamepad::GamepadPlugin)
-            .add(openxr::OxrInputPlugin)
+            .add(gamepad::GamepadPlugin);
+        #[cfg(feature = "xr")]
+        return p.add(openxr::OxrInputPlugin);
+        #[cfg(not(feature = "xr"))]
+        return p;
     }
 }
 

@@ -4,10 +4,12 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
+    action_set_syncing::OxrActionSetSyncSet,
     reference_space::{OxrPrimaryReferenceSpace, OxrReferenceSpace},
-    resources::{OxrInstance, OxrSession, OxrTime},
+    resources::{OxrFrameState, OxrInstance, Pipelined},
+    session::OxrSession,
 };
-use bevy_xr::session::{session_running, status_changed_to, XrStatus};
+use bevy_xr::session::{session_running, status_changed_to, XrSessionCreated, XrStatus};
 use openxr::{Posef, SpaceLocationFlags};
 
 use crate::{
@@ -23,13 +25,16 @@ impl Plugin for OxrInputPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            (sync_action_sets, sync_input_actions)
+            (
+                sync_action_sets.before(OxrActionSetSyncSet),
+                sync_input_actions.after(OxrActionSetSyncSet),
+            )
                 .chain()
                 .run_if(session_running)
                 .in_set(SchminputSet::SyncInputActions),
         );
         app.add_systems(
-            Update,
+            XrSessionCreated,
             attach_action_sets.run_if(status_changed_to(XrStatus::Ready)),
         );
         app.add_systems(OxrSendActionBindings, suggest_bindings);
@@ -164,8 +169,13 @@ fn sync_input_actions(
     )>,
     mut transform_query: Query<&mut Transform>,
     primary_ref_space: Res<OxrPrimaryReferenceSpace>,
-    time: Res<OxrTime>,
+    frame_state: Res<OxrFrameState>,
+    pipelined: Option<Res<Pipelined>>,
 ) {
+    let time = openxr::Time::from_nanos(
+        frame_state.predicted_display_time.as_nanos()
+            + (frame_state.predicted_display_period.as_nanos() * (pipelined.is_some() as i64)),
+    );
     for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity, ref_space) in &mut query
     {
         match action.as_mut() {
@@ -230,7 +240,7 @@ fn sync_input_actions(
                         space.as_mut().expect("Should be impossible to hit")
                     }
                 };
-                let pose = match space.locate(ref_space, **time) {
+                let pose = match space.locate(ref_space, time) {
                     Ok(pose) => pose,
                     Err(e) => {
                         warn!("Unable to Locate Action Space: {}", e.to_string());
