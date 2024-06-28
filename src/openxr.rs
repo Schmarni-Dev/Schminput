@@ -11,7 +11,7 @@ use bevy_openxr::{
     spaces::OxrSpaceSyncSet,
 };
 use bevy_xr::{
-    session::{session_running, status_changed_to, XrSessionCreated, XrStatus},
+    session::{session_available, session_running, status_changed_to, XrSessionCreated, XrStatus},
     spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
     types::XrPose,
 };
@@ -44,7 +44,7 @@ impl Plugin for OxrInputPlugin {
             attach_action_sets.run_if(status_changed_to(XrStatus::Ready)),
         );
         app.add_systems(OxrSendActionBindings, suggest_bindings);
-        app.add_systems(PostStartup, create_input_actions);
+        app.add_systems(PostStartup, create_input_actions.run_if(session_available));
     }
 }
 
