@@ -5,12 +5,17 @@ use bevy_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
     action_set_syncing::OxrActionSetSyncSet,
-    reference_space::{OxrPrimaryReferenceSpace, OxrReferenceSpace},
+    helper_traits::ToTransform,
     resources::{OxrFrameState, OxrInstance, Pipelined},
     session::OxrSession,
+    spaces::OxrSpaceSyncSet,
 };
-use bevy_xr::session::{session_running, status_changed_to, XrSessionCreated, XrStatus};
-use openxr::{Posef, SpaceLocationFlags};
+use bevy_xr::{
+    session::{session_running, status_changed_to, XrSessionCreated, XrStatus},
+    spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
+    types::XrPose,
+};
+use openxr::SpaceLocationFlags;
 
 use crate::{
     ActionName, ActionSet, ActionSetName, BoolActionValue, F32ActionValue, LocalizedActionName,
@@ -31,7 +36,8 @@ impl Plugin for OxrInputPlugin {
             )
                 .chain()
                 .run_if(session_running)
-                .in_set(SchminputSet::SyncInputActions),
+                .in_set(SchminputSet::SyncInputActions)
+                .before(OxrSpaceSyncSet),
         );
         app.add_systems(
             XrSessionCreated,
@@ -165,12 +171,13 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut PoseActionValue>,
         Option<&mut SetPoseOfEntity>,
-        Option<&OxrReferenceSpace>,
+        Option<&XrReferenceSpace>,
     )>,
-    mut transform_query: Query<&mut Transform>,
-    primary_ref_space: Res<OxrPrimaryReferenceSpace>,
+    // mut transform_query: Query<&mut Transform>,
+    primary_ref_space: Res<XrPrimaryReferenceSpace>,
     frame_state: Res<OxrFrameState>,
     pipelined: Option<Res<Pipelined>>,
+    mut cmds: Commands,
 ) {
     let time = openxr::Time::from_nanos(
         frame_state.predicted_display_time.as_nanos()
@@ -219,15 +226,15 @@ fn sync_input_actions(
             OxrAction::Pose(action, space) => {
                 let ref_space = match ref_space {
                     Some(s) => &s.0,
-                    None => primary_ref_space.0.as_ref(),
+                    None => &primary_ref_space.0 .0,
                 };
                 let space = match space {
                     Some(s) => s,
                     None => {
-                        match action.create_space(
-                            (**session).clone(),
+                        match session.create_action_space(
+                            action,
                             openxr::Path::NULL,
-                            Posef::IDENTITY,
+                            XrPose::IDENTITY,
                         ) {
                             Ok(s) => {
                                 space.replace(s);
@@ -240,37 +247,24 @@ fn sync_input_actions(
                         space.as_mut().expect("Should be impossible to hit")
                     }
                 };
-                let pose = match space.locate(ref_space, time) {
-                    Ok(pose) => pose,
-                    Err(e) => {
-                        warn!("Unable to Locate Action Space: {}", e.to_string());
+                if let Some(mut val) = pose_val {
+                    let location = match session.locate_space(space, ref_space, time) {
+                        Ok(pose) => pose,
+                        Err(e) => {
+                            warn!("Unable to Locate Action Space: {}", e.to_string());
+                            continue;
+                        }
+                    };
+                    if !location.location_flags.contains(
+                        SpaceLocationFlags::POSITION_VALID | SpaceLocationFlags::ORIENTATION_VALID,
+                    ) {
+                        warn!("Pose has invalid Position and or Orientation, skipping");
                         continue;
                     }
-                };
-                if !pose.location_flags.contains(
-                    SpaceLocationFlags::POSITION_VALID | SpaceLocationFlags::ORIENTATION_VALID,
-                ) {
-                    warn!("Pose has invalid Position and or Orientation, skipping");
-                    continue;
-                }
-                let pose = pose.pose;
-                let mut transform = Transform::IDENTITY;
-                transform.translation.x = pose.position.x;
-                transform.translation.y = pose.position.y;
-                transform.translation.z = pose.position.z;
-                transform.rotation.x = pose.orientation.x;
-                transform.rotation.y = pose.orientation.y;
-                transform.rotation.z = pose.orientation.z;
-                transform.rotation.w = pose.orientation.w;
-                if let Some(mut val) = pose_val {
-                    val.0 = transform;
+                    val.0 = location.pose.to_transform();
                 }
                 if let Some(e) = pos_on_entity {
-                    let Ok(mut t) = transform_query.get_mut(e.0) else {
-                        warn!("Unable to find target entity for setting the pose");
-                        continue;
-                    };
-                    *t = transform;
+                    cmds.entity(e.0).insert(*space);
                 }
             }
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
@@ -322,7 +316,7 @@ pub enum OxrAction {
     Bool(openxr::Action<bool>),
     F32(openxr::Action<f32>),
     Vec2(openxr::Action<openxr::Vector2f>),
-    Pose(openxr::Action<openxr::Posef>, Option<openxr::Space>),
+    Pose(openxr::Action<openxr::Posef>, Option<XrSpace>),
     Haptic(openxr::Action<openxr::Haptic>),
 }
 
