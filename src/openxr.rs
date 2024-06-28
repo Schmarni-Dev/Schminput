@@ -171,6 +171,7 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut PoseActionValue>,
         Option<&mut SetPoseOfEntity>,
+        Option<&mut SpaceActionValue>,
         Option<&XrReferenceSpace>,
     )>,
     // mut transform_query: Query<&mut Transform>,
@@ -183,7 +184,8 @@ fn sync_input_actions(
         frame_state.predicted_display_time.as_nanos()
             + (frame_state.predicted_display_period.as_nanos() * (pipelined.is_some() as i64)),
     );
-    for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity, ref_space) in &mut query
+    for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity, space_val, ref_space) in
+        &mut query
     {
         match action.as_mut() {
             OxrAction::Bool(action) => {
@@ -266,6 +268,9 @@ fn sync_input_actions(
                 if let Some(e) = pos_on_entity {
                     cmds.entity(e.0).insert(*space);
                 }
+                if let Some(mut e) = space_val {
+                    e.0 = Some(*space);
+                }
             }
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
@@ -310,6 +315,9 @@ pub struct SetPoseOfEntity(pub Entity);
 
 #[derive(Component, DerefMut, Deref, Clone, Copy)]
 pub struct PoseActionValue(pub Transform);
+
+#[derive(Component, DerefMut, Deref, Clone, Copy)]
+pub struct SpaceActionValue(pub Option<XrSpace>);
 
 #[derive(Component)]
 pub enum OxrAction {
