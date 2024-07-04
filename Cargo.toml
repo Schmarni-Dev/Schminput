@@ -1,6 +1,6 @@
 [package]
-name = "bevy_schminput"
-license = "MIT OR BSD-2-Clause-Patent OR Apache-2.0"
+name = "schminput"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
@@ -15,7 +15,6 @@ members = ["example", "xr_example"]
 
 [dependencies]
 bevy.workspace = true
-# bevy-trait-query.workspace = true
 bevy_openxr = { workspace = true, optional = true }
 bevy_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
