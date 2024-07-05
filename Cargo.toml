@@ -5,7 +5,7 @@ version = "0.1.0-rc1"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
 description = "An Action Based Input Manager for Bevy"
-keywords = ["bevy", "input", "vr", "xr", "action based"]
+keywords = ["bevy", "input", "vr", "xr", "action"]
 
 [features]
 default = []
