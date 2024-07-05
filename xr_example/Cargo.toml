@@ -6,8 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy_oxr.workspace = true
-bevy_schminput = { path = "../", features = ["xr"] }
-bevy.workspace = true
+bevy_mod_openxr.workspace = true
+bevy_mod_xr.workspace = true
+schminput = { path = "../", features = ["xr"] }
+bevy = { workspace = true, default-features = true }
 color-eyre = "0.6.2"
 eyre = "0.6.10"

@@ -1,32 +1,32 @@
 [package]
-name = "bevy_schminput"
-license = "MIT OR BSD-2-Clause-Patent OR Apache-2.0"
+name = "schminput"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/Schmarni-Dev/Schminput/"
 
 [features]
 default = []
-xr = ["dep:bevy_oxr", "dep:openxr"]
+xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [workspace]
 resolver = "2"
 members = ["example", "xr_example"]
 
 [dependencies]
 bevy.workspace = true
-bevy-trait-query.workspace = true
-bevy_oxr = { workspace = true, optional = true }
+bevy_mod_openxr = { workspace = true, optional = true }
+bevy_mod_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
 
 [workspace.dependencies]
-bevy = { version = "0.13", default-features = false }
-#bevy-trait-query = "0.4.0"
-# TODO: wait for update to bevy 0.13 i guess
-bevy-trait-query = { git = "https://github.com/RobWalt/bevy-trait-query", rev = "470e123" }
-bevy_oxr = { git = "https://github.com/awtterpip/bevy_oxr", rev = "c6d0686" }
-openxr = "0.18"
+bevy = { version = "0.14", default-features = false }
+bevy_mod_openxr = { version = "0.1.0-rc1" }
+bevy_mod_xr = { version = "0.1.0-rc1" }
+openxr = { version = "0.18", default-features = false }
+
+# bevy_openxr = { path = "../bevy_oxr/crates/bevy_openxr", package = "bevy_openxr" }
+# bevy_xr = { path = "../bevy_oxr/crates/bevy_xr", package = "bevy_xr" }
 
 [dev-dependencies]
-
-bevy_oxr = { workspace = true,default-features = true }
+bevy_mod_openxr = { workspace = true, default-features = true }
