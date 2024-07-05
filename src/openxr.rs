@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use bevy::{prelude::*, utils::HashMap};
-use bevy_openxr::{
+use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
     action_set_syncing::OxrActionSetSyncSet,
@@ -10,8 +10,11 @@ use bevy_openxr::{
     session::OxrSession,
     spaces::OxrSpaceSyncSet,
 };
-use bevy_xr::{
-    session::{session_available, session_running, status_changed_to, XrSessionCreated, XrStatus},
+use bevy_mod_xr::{
+    session::{
+        session_available, session_running, XrCreateSession,
+        XrSessionCreatedEvent, XrState,
+    },
     spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
     types::XrPose,
 };
@@ -40,8 +43,8 @@ impl Plugin for OxrInputPlugin {
                 .before(OxrSpaceSyncSet),
         );
         app.add_systems(
-            XrSessionCreated,
-            attach_action_sets.run_if(status_changed_to(XrStatus::Ready)),
+            XrCreateSession,
+            attach_action_sets,
         );
         app.add_systems(OxrSendActionBindings, suggest_bindings);
         app.add_systems(PostStartup, create_input_actions.run_if(session_available));

@@ -1,9 +1,8 @@
-use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
-use bevy_openxr::init::OxrTrackingRoot;
-use bevy_schminput::{
+use bevy::{color::palettes::css, diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
+use schminput::{
     gamepad::{GamepadBinding, GamepadBindingDevice, GamepadBindings},
-    prelude::*,
     openxr::{OxrActionBlueprint, PoseActionValue, SetPoseOfEntity, OCULUS_TOUCH_PROFILE},
+    prelude::*,
     ActionHeaderBuilder, ActionSetHeaderBuilder,
 };
 #[derive(Component, Clone, Copy)]
@@ -20,9 +19,9 @@ struct JumpAction;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(bevy_openxr::add_xr_plugins(DefaultPlugins));
+    app.add_plugins(bevy_mod_openxr::add_xr_plugins(DefaultPlugins));
     app.add_plugins(FrameTimeDiagnosticsPlugin);
-    app.add_plugins(bevy_schminput::DefaultSchmugins);
+    app.add_plugins(schminput::DefaultSchmugins);
     // app.add_systems(XrPostSetup, xr_add_forward_ref);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
@@ -35,7 +34,7 @@ fn main() {
 
     app.run();
 }
-fn setup(mut cmds: Commands, root: Query<Entity, With<OxrTrackingRoot>>) {
+fn setup(mut cmds: Commands) {
     let player_set = ActionSetHeaderBuilder::new("player")
         .with_name("Player")
         .build(&mut cmds)
@@ -146,17 +145,16 @@ fn run(
     left_hand: Query<&Transform, With<HandLeft>>,
     right_hand_action: Query<&PoseActionValue, With<HandRightAction>>,
     mut gizmos: Gizmos,
-    root: Query<&GlobalTransform, With<OxrTrackingRoot>>,
 ) {
     info!("move: {}", **move_action.single());
     info!("look: {}", **look_action.single());
     info!("jump: {}", **jump_action.single());
     for hand in left_hand.into_iter() {
-        gizmos.sphere(hand.translation, hand.rotation, 0.1, Color::ORANGE_RED);
+        gizmos.sphere(hand.translation, hand.rotation, 0.1, css::ORANGE_RED);
     }
     let pose = right_hand_action.single();
     // let pose = root.single().compute_transform().mul_transform(**pose);
-    gizmos.sphere(pose.translation, pose.rotation, 0.1, Color::LIME_GREEN);
+    gizmos.sphere(pose.translation, pose.rotation, 0.1, css::LIMEGREEN);
 }
 
 fn setup_env(
@@ -166,99 +164,15 @@ fn setup_env(
 ) {
     // plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::new(Vec3::Y).mesh().size(5.0, 5.0)),
-        material: materials.add(StandardMaterial::from(Color::rgb(0.3, 0.5, 0.3))),
+        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(2.5)).mesh()),
+        material: materials.add(StandardMaterial::from(Color::srgb(0.3, 0.5, 0.3))),
         ..default()
     });
     // cube
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1)))),
-        material: materials.add(StandardMaterial::from(Color::rgb(0.8, 0.7, 0.6))),
+        material: materials.add(StandardMaterial::from(Color::srgb(0.8, 0.7, 0.6))),
         transform: Transform::from_xyz(0.0, 0.5, 0.0),
         ..default()
     });
-}
-
-// fn setup(
-//     mut keyboard: ResMut<KeyboardBindings>,
-//     mut oxr: ResMut<OXRSetupBindings>,
-//     mut commands: Commands,
-//     mut mouse: ResMut<MouseBindings>,
-//     xr_enabled: Option<Res<XrStatus>>,
-// ) {
-//     let player_move = PlayerMove::default();
-//     let player_turn = PlayerLook {
-//         mouse_sens_x: 0.1,
-//         mouse_sens_y: 0.1,
-//         ..Default::default()
-//     };
-//     keyboard.add_binding(
-//         &player_move,
-//         KeyboardBinding::Dpad {
-//             up: KeyBinding::Held(KeyCode::KeyW),
-//             down: KeyBinding::Held(KeyCode::KeyS),
-//             left: KeyBinding::Held(KeyCode::KeyA),
-//             right: KeyBinding::Held(KeyCode::KeyD),
-//         },
-//     );
-//     keyboard.add_binding(
-//         &player_turn,
-//         KeyboardBinding::Number {
-//             positive: KeyBinding::Held(KeyCode::KeyQ),
-//             negative: KeyBinding::Held(KeyCode::KeyE),
-//         },
-//     );
-//     mouse.add_motion_binding(&player_turn);
-//     oxr.add_binding(
-//         &player_move,
-//         OXRBinding {
-//             device: "/interaction_profiles/oculus/touch_controller",
-//             binding: "/user/hand/left/input/thumbstick",
-//         },
-//     );
-//     oxr.add_binding(
-//         &player_turn,
-//         OXRBinding {
-//             device: "/interaction_profiles/oculus/touch_controller",
-//             binding: "/user/hand/right/input/thumbstick/y",
-//         },
-//     );
-//
-//     if xr_enabled.is_none() || xr_enabled.is_some_and(|v| *v == XrStatus::Disabled) {
-//         info!("Non Xr Mode");
-//         let mut t = Transform::from_xyz(0.0, 1.8, 0.0);
-//         t.rotate_x(TAU * -0.05);
-//         let cam = commands
-//             .spawn((
-//                 Camera3dBundle::default(),
-//                 player_turn,
-//                 ForwardRef::default(),
-//             ))
-//             .insert(t)
-//             .id();
-//
-//         commands
-//             .spawn((SpatialBundle::default(), OpenXRTrackingRoot, player_move))
-//             .push_children(&[cam]);
-//     } else {
-//         info!("Xr Mode");
-//         commands.spawn((
-//             SpatialBundle::default(),
-//             OpenXRTrackingRoot,
-//             player_turn,
-//             player_move,
-//         ));
-//     }
-// }
-//
-// fn xr_add_forward_ref(mut commands: Commands, hmd: Query<Entity, With<OpenXRTrackingRoot>>) {
-//     commands
-//         .entity(hmd.get_single().unwrap())
-//         .insert(ForwardRef::default());
-// }
-
-#[derive(Component, Default)]
-struct ForwardRef {
-    forward: Vec3,
-    right: Vec3,
 }

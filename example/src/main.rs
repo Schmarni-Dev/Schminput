@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
-use bevy_schminput::prelude::*;
-use bevy_schminput::DefaultSchmugins;
+use schminput::prelude::*;
+use schminput::DefaultSchmugins;
 
 fn main() {
     let mut app = App::new();
@@ -28,7 +28,7 @@ fn setup(mut cmds: Commands) {
     let mut move_e = ActionHeaderBuilder::new("move")
         .with_name("Move")
         .build(&mut cmds);
-    use bevy_schminput::keyboard::KeyboardBinding as KbB;
+    use schminput::keyboard::KeyboardBinding as KbB;
     move_e.insert((
         Vec2ActionValue::default(),
         KeyboardBindings::default()
@@ -117,27 +117,3 @@ fn run(
         }
     }
 }
-
-// fn setup(
-//     mut commands: Commands,
-// ) {
-//     let example = ExampleAction::default();
-//     let bool = BoolAction::default();
-//     keyboard.add_binding(
-//         &bool,
-//         KeyboardBinding::Simple(KeyBinding::JustPressed(KeyCode::KeyC)),
-//     );
-//     keyboard.add_binding(
-//         &example,
-//         KeyboardBinding::Dpad {
-//             up: KeyBinding::Held(KeyCode::KeyW),
-//             down: KeyBinding::Held(KeyCode::KeyS),
-//             left: KeyBinding::Held(KeyCode::KeyA),
-//             right: KeyBinding::Held(KeyCode::KeyD),
-//         },
-//     );
-//     mouse.add_binding(&bool, MouseBinding::JustPressed(MouseButton::Left));
-//     mouse.add_binding(&bool, MouseBinding::JustReleased(MouseButton::Left));
-//     mouse.add_binding(&bool, MouseBinding::Held(MouseButton::Right));
-//     commands.spawn((example, bool));
-// }
