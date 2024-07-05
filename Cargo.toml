@@ -4,6 +4,8 @@ license = "MIT OR Apache-2.0"
 version = "0.1.0-rc1"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
+description = "An Action Based Input Manager for Bevy"
+keywords = ["bevy", "input", "vr", "xr", "OpenXR", "action based"]
 
 [features]
 default = []
