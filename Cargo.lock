@@ -1787,7 +1787,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "0.1.0"
+version = "0.1.0-rc1"
 dependencies = [
  "bevy",
  "color-eyre",
@@ -3425,7 +3425,7 @@ dependencies = [
 
 [[package]]
 name = "schminput"
-version = "0.1.0"
+version = "0.1.0-rc1.1"
 dependencies = [
  "bevy",
  "bevy_mod_openxr",
