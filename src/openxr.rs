@@ -13,7 +13,7 @@ use bevy_mod_openxr::{
 };
 use bevy_mod_xr::{
     session::{
-        session_available, session_running, XrCreateSession, XrSessionCreatedEvent, XrState,
+        session_available, session_running, XrSessionCreated, XrSessionCreatedEvent, XrState,
     },
     spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
     types::XrPose,
@@ -42,7 +42,7 @@ impl Plugin for OxrInputPlugin {
                 .in_set(SchminputSet::SyncInputActions)
                 .before(OxrSpaceSyncSet),
         );
-        app.add_systems(XrCreateSession, attach_action_sets.after(create_xr_session));
+        app.add_systems(XrSessionCreated, attach_action_sets);
         app.add_systems(OxrSendActionBindings, suggest_bindings);
         app.add_systems(PostStartup, create_input_actions.run_if(session_available));
     }

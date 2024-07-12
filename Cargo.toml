@@ -23,12 +23,11 @@ openxr = { workspace = true, optional = true }
 
 [workspace.dependencies]
 bevy = { version = "0.14", default-features = false }
-bevy_mod_openxr = { version = "0.1.0-rc1" }
-bevy_mod_xr = { version = "0.1.0-rc1" }
+# bevy_mod_openxr = { version = "0.1.0-rc1" }
+# bevy_mod_xr = { version = "0.1.0-rc1" }
+bevy_mod_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "revert-some-session-event-changes" }
+bevy_mod_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "revert-some-session-event-changes" }
 openxr = { version = "0.18", default-features = false }
-
-# bevy_openxr = { path = "../bevy_oxr/crates/bevy_openxr", package = "bevy_openxr" }
-# bevy_xr = { path = "../bevy_oxr/crates/bevy_xr", package = "bevy_xr" }
 
 [dev-dependencies]
 bevy_mod_openxr = { workspace = true, default-features = true }

@@ -777,13 +777,12 @@ dependencies = [
 [[package]]
 name = "bevy_mod_openxr"
 version = "0.1.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d07678b77f5d34fab831869febc81a9cbc6876fd12911d1f8926ed5ced6794cb"
+source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=revert-some-session-event-changes#1eed718860b90c70f8580c81308347def46cbfd3"
 dependencies = [
  "ash",
  "bevy",
  "bevy_mod_xr",
- "d3d12 0.19.0",
+ "d3d12 0.20.0",
  "jni 0.20.0",
  "ndk-context",
  "openxr",
@@ -797,8 +796,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_xr"
 version = "0.1.0-rc1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7264e918cbf68ad39a0932a351634d4083369178348bbba1814838e75ed9941"
+source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=revert-some-session-event-changes#1eed718860b90c70f8580c81308347def46cbfd3"
 dependencies = [
  "bevy",
 ]
