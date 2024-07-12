@@ -6,15 +6,12 @@ use bevy_mod_openxr::{
     action_set_attaching::OxrAttachActionSet,
     action_set_syncing::OxrActionSetSyncSet,
     helper_traits::ToTransform,
-    init::create_xr_session,
     resources::{OxrFrameState, OxrInstance, Pipelined},
     session::OxrSession,
     spaces::OxrSpaceSyncSet,
 };
 use bevy_mod_xr::{
-    session::{
-        session_available, session_running, XrSessionCreated, XrSessionCreatedEvent, XrState,
-    },
+    session::{session_available, session_running, XrSessionCreated},
     spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
     types::XrPose,
 };
