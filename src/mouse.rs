@@ -52,7 +52,6 @@ pub fn sync_actions(
         let Some(movement) = binding.movement else {
             continue;
         };
-        info!("mouse");
         if movement.motion_type == MouseMotionType::DeltaMotion {
             let mut delta = Vec2::ZERO;
             for e in delta_motion.read() {
