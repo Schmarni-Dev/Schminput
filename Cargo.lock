@@ -777,7 +777,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_openxr"
 version = "0.1.0-rc1"
-source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=revert-some-session-event-changes#1eed718860b90c70f8580c81308347def46cbfd3"
+source = "git+https://github.com/awtterpip/bevy_oxr#13d73fd2c4fbedc6929d6d8894cd13e6facbe1f9"
 dependencies = [
  "ash",
  "bevy",
@@ -796,7 +796,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_xr"
 version = "0.1.0-rc1"
-source = "git+https://github.com/Schmarni-Dev/bevy_openxr?branch=revert-some-session-event-changes#1eed718860b90c70f8580c81308347def46cbfd3"
+source = "git+https://github.com/awtterpip/bevy_oxr#13d73fd2c4fbedc6929d6d8894cd13e6facbe1f9"
 dependencies = [
  "bevy",
 ]

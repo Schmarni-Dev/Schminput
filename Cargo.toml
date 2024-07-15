@@ -25,8 +25,8 @@ openxr = { workspace = true, optional = true }
 bevy = { version = "0.14", default-features = false }
 # bevy_mod_openxr = { version = "0.1.0-rc1" }
 # bevy_mod_xr = { version = "0.1.0-rc1" }
-bevy_mod_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "revert-some-session-event-changes" }
-bevy_mod_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "revert-some-session-event-changes" }
+bevy_mod_openxr = { git = "https://github.com/awtterpip/bevy_oxr"}
+bevy_mod_xr = { git = "https://github.com/awtterpip/bevy_oxr"}
 openxr = { version = "0.18", default-features = false }
 
 [dev-dependencies]
