@@ -1,15 +1,18 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
-    BoolActionValue, InputAxis, InputAxisDirection, ButtonInputBeheavior,
-    F32ActionValue, SchminputSet, Vec2ActionValue,
+    BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
+    SchminputSet, Vec2ActionValue,
 };
 
 pub struct MousePlugin;
 
 impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, sync_actions.in_set(SchminputSet::SyncInputActions));
+        app.add_systems(
+            PreUpdate,
+            sync_actions.in_set(SchminputSet::SyncInputActions),
+        );
     }
 }
 
@@ -32,13 +35,13 @@ pub fn sync_actions(
                 false => 1.0,
             };
             if let Some(boolean) = bool_value.as_mut() {
-                boolean.0 |= button.behavior.apply(&input, button.button);
+                *boolean.0 |= button.behavior.apply(&input, button.button);
             }
             if let Some(float) = f32_value.as_mut() {
                 if button.axis == InputAxis::X {
                     let val = button.behavior.apply(&input, button.button) as u8 as f32;
 
-                    float.0 += val * button.axis_dir.as_multipier() * delta_mutiplier;
+                    *float.0 += val * button.axis_dir.as_multipier() * delta_mutiplier;
                 }
             }
             if let Some(vec) = vec2_value.as_mut() {
@@ -60,13 +63,13 @@ pub fn sync_actions(
                 delta += v * movement.multiplier;
             }
             if let Some(boolean) = bool_value.as_mut() {
-                boolean.0 |= delta != Vec2::ZERO;
+                *boolean.0 |= delta != Vec2::ZERO;
             }
             if let Some(float) = f32_value.as_mut() {
-                float.0 += delta.x;
+                *float.0 += delta.x;
             }
             if let Some(vec2) = vec2_value.as_mut() {
-                vec2.0 += delta;
+                *vec2.0 += delta;
             }
         }
     }

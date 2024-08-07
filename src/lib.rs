@@ -4,10 +4,12 @@ pub mod mouse;
 #[cfg(feature = "xr")]
 pub mod openxr;
 pub mod prelude;
+pub mod subaction_paths;
 
-use std::{borrow::Cow, hash::Hash};
+use std::{borrow::Cow, hash::Hash, mem};
 
 use bevy::{app::PluginGroupBuilder, ecs::system::EntityCommands, prelude::*};
+use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
 pub enum SchminputSet {
@@ -35,26 +37,27 @@ impl Plugin for SchminputPlugin {
 
 fn clean_bool(mut query: Query<&mut BoolActionValue>) {
     for mut val in &mut query {
-        val.0 = false;
+        let _last = mem::take(val.as_mut());
     }
 }
 fn clean_f32(mut query: Query<&mut F32ActionValue>) {
     for mut val in &mut query {
-        val.0 = 0.0;
+        let _last = mem::take(val.as_mut());
     }
 }
 fn clean_vec2(mut query: Query<&mut Vec2ActionValue>) {
     for mut val in &mut query {
-        val.0 = Vec2::ZERO;
+        let _last = mem::take(val.as_mut());
     }
 }
 
-pub struct DefaultSchmugins;
+pub struct DefaultSchminputPlugins;
 
-impl PluginGroup for DefaultSchmugins {
+impl PluginGroup for DefaultSchminputPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        let p = PluginGroupBuilder::start::<DefaultSchmugins>()
+        let p = PluginGroupBuilder::start::<DefaultSchminputPlugins>()
             .add(SchminputPlugin)
+            .add(SubactionPathPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
@@ -64,8 +67,6 @@ impl PluginGroup for DefaultSchmugins {
         return p;
     }
 }
-
-// TODO: figure out a nice way of doing subaction paths, preferably across input methods
 
 /// The ActionSet This Action belongs to.
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref)]
@@ -89,34 +90,14 @@ pub struct LocalizedActionName(pub Cow<'static, str>);
 pub struct ActionName(pub Cow<'static, str>);
 
 /// +X: Right, +Y: Up
-#[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
-pub struct Vec2ActionValue(pub Vec2);
+#[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
+pub struct Vec2ActionValue(pub SubactionPathMap<Vec2>);
 
-impl Vec2ActionValue {
-    const ZERO: Self = Vec2ActionValue(Vec2::ZERO);
-}
+#[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
+pub struct F32ActionValue(pub SubactionPathMap<f32>);
 
-impl Default for Vec2ActionValue {
-    fn default() -> Self {
-        Self::ZERO
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component, Reflect, Deref, DerefMut)]
-pub struct F32ActionValue(pub f32);
-
-impl F32ActionValue {
-    const ZERO: Self = F32ActionValue(0f32);
-}
-
-impl Default for F32ActionValue {
-    fn default() -> Self {
-        Self::ZERO
-    }
-}
-
-#[derive(Debug, Clone, Copy, Component, Reflect, Default, Deref, DerefMut)]
-pub struct BoolActionValue(pub bool);
+#[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
+pub struct BoolActionValue(pub SubactionPathMap<bool>);
 
 // there might be a better name for this
 /// +X = Right, +Y = Up
@@ -231,7 +212,7 @@ impl ActionHeaderBuilder {
         self
     }
     pub fn build<'a>(self, cmds: &'a mut Commands) -> EntityCommands<'a> {
-        let mut e_cmds = cmds.spawn(self.id);
+        let mut e_cmds = cmds.spawn((self.id, RequestedSubactionPaths::default()));
         if let Some(name) = self.name {
             e_cmds.insert(name);
         }

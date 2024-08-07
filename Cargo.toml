@@ -8,7 +8,7 @@ description = "An Action Based Input Manager for Bevy"
 keywords = ["bevy", "input", "vr", "xr", "action"]
 
 [features]
-default = []
+default = ["xr"]
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [workspace]

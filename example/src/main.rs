@@ -3,12 +3,12 @@ use std::time::Duration;
 use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
 use schminput::prelude::*;
-use schminput::DefaultSchmugins;
+use schminput::DefaultSchminputPlugins;
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(DefaultSchmugins);
+    app.add_plugins(DefaultSchminputPlugins);
     app.add_systems(Startup, setup);
     app.add_systems(Update, run);
 

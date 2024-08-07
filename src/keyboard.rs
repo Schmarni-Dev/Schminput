@@ -29,13 +29,13 @@ pub fn sync_actions(
                 false => 1.0,
             };
             if let Some(button) = bool_value.as_mut() {
-                button.0 |= binding.behavior.apply(&input, binding.key);
+ *               button.0 |= binding.behavior.apply(&input, binding.key);
             }
             if let Some(float) = f32_value.as_mut() {
                 if binding.axis == InputAxis::X {
                     let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
 
-                    float.0 += val * binding.axis_dir.as_multipier() * delta_multiplier;
+  *                  float.0 += val * binding.axis_dir.as_multipier() * delta_multiplier;
                 }
             }
             if let Some(vec) = vec2_value.as_mut() {
