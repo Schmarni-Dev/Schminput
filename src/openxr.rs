@@ -5,26 +5,28 @@ use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
     action_set_syncing::OxrActionSetSyncSet,
-    helper_traits::ToTransform,
-    resources::{OxrFrameState, OxrInstance, Pipelined},
+    helper_traits::ToVec2 as _,
+    resources::OxrInstance,
     session::OxrSession,
     spaces::OxrSpaceSyncSet,
 };
 use bevy_mod_xr::{
-    session::{session_available, session_running, XrSessionCreated},
-    spaces::{XrPrimaryReferenceSpace, XrReferenceSpace, XrSpace},
+    session::{session_available, session_running, XrPreSessionEnd, XrSessionCreated},
+    spaces::XrSpace,
     types::XrPose,
 };
-use openxr::SpaceLocationFlags;
 
 use crate::{
+    subaction_paths::{
+        RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
+    },
     ActionName, ActionSet, ActionSetName, BoolActionValue, F32ActionValue, LocalizedActionName,
     LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
 
 pub const OCULUS_TOUCH_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
-pub const META_TOUCH_PRO_PROFILE: &str = "/interaction_profiles/meta/touch_pro_controller";
-pub const META_TOUCH_PLUS_PROFILE: &str = "/interaction_profiles/meta/touch_plus_controller";
+pub const META_TOUCH_PRO_PROFILE: &str = "/interaction_profiles/facebook/touch_controller_pro";
+pub const META_TOUCH_PLUS_PROFILE: &str = "/interaction_profiles/meta/touch_controller_plus";
 
 impl Plugin for OxrInputPlugin {
     fn build(&self, app: &mut App) {
@@ -33,6 +35,7 @@ impl Plugin for OxrInputPlugin {
             (
                 sync_action_sets.before(OxrActionSetSyncSet),
                 sync_input_actions.after(OxrActionSetSyncSet),
+                attach_spaces_to_target_entities,
             )
                 .chain()
                 .run_if(session_running)
@@ -41,7 +44,68 @@ impl Plugin for OxrInputPlugin {
         );
         app.add_systems(XrSessionCreated, attach_action_sets);
         app.add_systems(OxrSendActionBindings, suggest_bindings);
-        app.add_systems(PostStartup, create_input_actions.run_if(session_available));
+        // TODO: make this runnable at multiple points if possible?
+        app.add_systems(
+            PostStartup,
+            (insert_xr_subaction_paths, create_input_actions)
+                .chain()
+                .run_if(session_available),
+        );
+        // might be incorrect?
+        app.add_systems(XrPreSessionEnd, reset_space_values);
+    }
+}
+
+fn attach_spaces_to_target_entities(
+    query: Query<(&AttachSpaceToEntity, &SpaceActionValue)>,
+    check_query: Query<Has<XrSpace>>,
+    mut cmds: Commands,
+) {
+    for (target, value) in query.iter() {
+        let Some(space) = value.any else {
+            debug!("no space to attach to entity");
+            continue;
+        };
+        if !check_query
+            .get(target.0)
+            .expect("target entity should exist")
+        {
+            cmds.entity(target.0).insert(space);
+        }
+    }
+}
+
+fn reset_space_values(mut query: Query<&mut SpaceActionValue>) {
+    for mut s in query.iter_mut() {
+        s.any = None;
+        s.paths.clear();
+    }
+}
+
+#[derive(Component, Clone)]
+pub struct OxrSubactionPath(pub openxr::Path);
+
+fn insert_xr_subaction_paths(
+    query: Query<&SubactionPathStr>,
+    mut cmds: Commands,
+    mut event: EventReader<SubactionPathCreated>,
+    instance: Res<OxrInstance>,
+) {
+    for e in event.read() {
+        let Ok(path) = query.get(e.0 .0) else {
+            error!("Invalid SubactionPath Entity: {:#?}", e.0 .0);
+            continue;
+        };
+        if let Some(xr_path) = path.0.strip_prefix("/oxr") {
+            cmds.entity(e.0 .0)
+                .insert(OxrSubactionPath(match instance.string_to_path(xr_path) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        error!("can't convert ({}) to openxr path: {}", xr_path, err);
+                        continue;
+                    }
+                }));
+        }
     }
 }
 
@@ -67,7 +131,6 @@ fn suggest_bindings(
     mut suggest: EventWriter<OxrSuggestActionBinding>,
     mut cmds: Commands,
 ) {
-    // panic!("suggesting bindings");
     for (blueprint, action, entity) in &query {
         for (profile, bindings) in blueprint.bindings.iter() {
             suggest.send(OxrSuggestActionBinding {
@@ -88,12 +151,13 @@ fn create_input_actions(
         &ActionSet,
         &ActionName,
         Option<&LocalizedActionName>,
+        &RequestedSubactionPaths,
         Has<BoolActionValue>,
         Has<Vec2ActionValue>,
         Has<F32ActionValue>,
-        Has<PoseActionValue>,
-        Has<SetPoseOfEntity>,
+        Has<SpaceActionValue>,
     )>,
+    path_query: Query<&OxrSubactionPath>,
     action_set_query: Query<(&ActionSetName, Option<&LocalizedActionSetName>)>,
     instance: Res<OxrInstance>,
 ) {
@@ -103,11 +167,11 @@ fn create_input_actions(
         action_set,
         action_id,
         action_name,
+        requested_subaction_paths,
         has_bool,
         has_vec2,
         has_f32,
-        has_pose,
-        has_set_pose,
+        has_space,
     ) in &query
     {
         let Ok((set_id, set_name)) = action_set_query.get(action_set.0) else {
@@ -119,27 +183,34 @@ fn create_input_actions(
         let action_set = set_map
             .entry(action_set.0)
             .or_insert_with(|| instance.create_action_set(set_id, set_name, 0).unwrap());
-        let action = match (has_bool, has_f32, has_vec2, has_pose || has_set_pose) {
+
+        let paths = requested_subaction_paths
+            .iter()
+            .filter_map(|p| path_query.get(p.0).ok())
+            .map(|p| p.0)
+            .collect::<Vec<_>>();
+        let action = match (
+            has_bool, has_f32, has_vec2, has_space, /* has_pose || has_set_pose */
+        ) {
             (true, false, false, false) => OxrAction::Bool(
                 action_set
-                    .create_action(action_id, action_name, &[])
+                    .create_action(action_id, action_name, &paths)
                     .unwrap(),
             ),
             (false, true, false, false) => OxrAction::F32(
                 action_set
-                    .create_action(action_id, action_name, &[])
+                    .create_action(action_id, action_name, &paths)
                     .unwrap(),
             ),
             (false, false, true, false) => OxrAction::Vec2(
                 action_set
-                    .create_action(action_id, action_name, &[])
+                    .create_action(action_id, action_name, &paths)
                     .unwrap(),
             ),
-            (false, false, false, true) => OxrAction::Pose(
+            (false, false, false, true) => OxrAction::Space(
                 action_set
-                    .create_action(action_id, action_name, &[])
+                    .create_action(action_id, action_name, &paths)
                     .unwrap(),
-                None,
             ),
             (false, false, false, false) => {
                 error!("OpenXR action has no ActionValue!");
@@ -166,113 +237,154 @@ fn sync_input_actions(
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
-        Option<&mut PoseActionValue>,
-        Option<&mut SetPoseOfEntity>,
         Option<&mut SpaceActionValue>,
-        Option<&XrReferenceSpace>,
+        &RequestedSubactionPaths,
     )>,
-    // mut transform_query: Query<&mut Transform>,
-    primary_ref_space: Res<XrPrimaryReferenceSpace>,
-    frame_state: Res<OxrFrameState>,
-    pipelined: Option<Res<Pipelined>>,
-    mut cmds: Commands,
+    path_query: Query<&OxrSubactionPath>,
 ) {
-    let time = openxr::Time::from_nanos(
-        frame_state.predicted_display_time.as_nanos()
-            + (frame_state.predicted_display_period.as_nanos() * (pipelined.is_some() as i64)),
-    );
-    for (mut action, bool_val, f32_val, vec2_val, pose_val, pos_on_entity, space_val, ref_space) in
-        &mut query
+    // );
+    for (
+        mut action,
+        mut bool_val,
+        mut f32_val,
+        mut vec2_val,
+        mut space_val,
+        requested_subaction_paths,
+    ) in &mut query
     {
+        let paths = requested_subaction_paths
+            .iter()
+            .filter_map(|p| Some((*p, path_query.get(p.0).ok()?)))
+            .map(|(sub_path, path)| (sub_path, path.0))
+            .collect::<Vec<_>>();
         match action.as_mut() {
             OxrAction::Bool(action) => {
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
-                        if let Some(mut val) = bool_val {
-                            val.0 |= v.current_state;
+                        if let Some(val) = bool_val.as_mut() {
+                            // This might be broken!
+                            val.any |= v.current_state;
                         } else {
                             warn!("Bool action but no bool Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
+                for (sub_action_path, path) in paths.into_iter() {
+                    match action.state(&session, path) {
+                        Ok(v) => {
+                            if let Some(val) = bool_val.as_mut() {
+                                // This might be broken!
+                                *val.entry_with_path(sub_action_path).or_default() |=
+                                    v.current_state;
+                            } else {
+                                warn!("Bool action but no bool Value!");
+                            }
+                        }
+                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+                    };
+                }
             }
             OxrAction::F32(action) => {
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
-                        if let Some(mut val) = f32_val {
-                            val.0 += v.current_state;
+                        if let Some(val) = f32_val.as_mut() {
+                            // This might be broken!
+                            val.any += v.current_state;
                         } else {
                             warn!("F32 action but no f32 Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
+                for (sub_action_path, path) in paths.into_iter() {
+                    match action.state(&session, path) {
+                        Ok(v) => {
+                            if let Some(val) = f32_val.as_mut() {
+                                // This might be broken!
+                                *val.entry_with_path(sub_action_path).or_default() +=
+                                    v.current_state;
+                            } else {
+                                warn!("F32 action but no f32 Value!");
+                            }
+                        }
+                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+                    };
+                }
             }
             OxrAction::Vec2(action) => {
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
-                        if let Some(mut val) = vec2_val {
-                            val.0.x += v.current_state.x;
-                            val.0.y += v.current_state.y;
+                        if let Some(val) = vec2_val.as_mut() {
+                            // This might be broken!
+                            val.any += v.current_state.to_vec2();
                         } else {
                             warn!("Vec2 action but no Vec2 Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
+                for (sub_action_path, path) in paths.into_iter() {
+                    match action.state(&session, path) {
+                        Ok(v) => {
+                            if let Some(val) = vec2_val.as_mut() {
+                                // This might be broken!
+                                *val.entry_with_path(sub_action_path).or_default() +=
+                                    v.current_state.to_vec2();
+                            } else {
+                                warn!("Vec2 action but no Vec2 Value!");
+                            }
+                        }
+                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+                    };
+                }
             }
-            OxrAction::Pose(action, space) => {
-                let ref_space = match ref_space {
-                    Some(s) => &s.0,
-                    None => &primary_ref_space.0 .0,
-                };
-                let space = match space {
-                    Some(s) => s,
-                    None => {
+            // TODO: Add support for XrPose offets (per subaction path?)
+            OxrAction::Space(action) => {
+                if let Some(val) = space_val.as_mut() {
+                    if val.is_none() {
                         match session.create_action_space(
                             action,
                             openxr::Path::NULL,
                             XrPose::IDENTITY,
                         ) {
                             Ok(s) => {
-                                space.replace(s);
+                                val.replace(s);
                             }
                             Err(e) => {
-                                warn!("unable to create space from action: {}", e.to_string());
+                                warn!("unable to create space from action: {}", e);
                                 continue;
                             }
                         };
-                        space.as_mut().expect("Should be impossible to hit")
                     }
-                };
-                if let Some(mut val) = pose_val {
-                    let location = match session.locate_space(space, ref_space, time) {
-                        Ok(pose) => pose,
-                        Err(e) => {
-                            warn!("Unable to Locate Action Space: {}", e.to_string());
-                            continue;
+                    for (sub_path, path) in paths.into_iter() {
+                        if val
+                            .get_with_path(&sub_path)
+                            .and_then(|v| v.as_ref())
+                            .is_none()
+                        {
+                            match session.create_action_space(action, path, XrPose::IDENTITY) {
+                                Ok(s) => {
+                                    val.set_value_for_path(sub_path, Some(s));
+                                }
+                                Err(e) => {
+                                    warn!("unable to create space from action: {}", e);
+                                    continue;
+                                }
+                            };
                         }
-                    };
-                    if !location.location_flags.contains(
-                        SpaceLocationFlags::POSITION_VALID | SpaceLocationFlags::ORIENTATION_VALID,
-                    ) {
-                        warn!("Pose has invalid Position and or Orientation, skipping");
-                        continue;
                     }
-                    val.0 = location.pose.to_transform();
-                }
-                if let Some(e) = pos_on_entity {
-                    cmds.entity(e.0).insert(*space);
-                }
-                if let Some(mut e) = space_val {
-                    e.0 = Some(*space);
+                } else {
+                    warn!("Space action but no Space Value!");
                 }
             }
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
     }
 }
+
+#[derive(Component, DerefMut, Deref, Clone, Copy)]
+pub struct AttachSpaceToEntity(pub Entity);
 
 #[derive(Component, Default)]
 pub struct OxrActionBlueprint {
@@ -307,21 +419,15 @@ impl OxrActionDeviceBindingBuilder {
     }
 }
 
-#[derive(Component, DerefMut, Deref, Clone, Copy)]
-pub struct SetPoseOfEntity(pub Entity);
-
-#[derive(Component, DerefMut, Deref, Clone, Copy)]
-pub struct PoseActionValue(pub Transform);
-
-#[derive(Component, DerefMut, Deref, Clone, Copy)]
-pub struct SpaceActionValue(pub Option<XrSpace>);
+#[derive(Component, DerefMut, Deref, Clone, Default)]
+pub struct SpaceActionValue(pub SubactionPathMap<Option<XrSpace>>);
 
 #[derive(Component)]
 pub enum OxrAction {
     Bool(openxr::Action<bool>),
     F32(openxr::Action<f32>),
     Vec2(openxr::Action<openxr::Vector2f>),
-    Pose(openxr::Action<openxr::Posef>, Option<XrSpace>),
+    Space(openxr::Action<openxr::Posef>),
     Haptic(openxr::Action<openxr::Haptic>),
 }
 
@@ -331,7 +437,7 @@ impl OxrAction {
             OxrAction::Bool(a) => a.as_raw(),
             OxrAction::F32(a) => a.as_raw(),
             OxrAction::Vec2(a) => a.as_raw(),
-            OxrAction::Pose(a, _) => a.as_raw(),
+            OxrAction::Space(a) => a.as_raw(),
             OxrAction::Haptic(a) => a.as_raw(),
         }
     }

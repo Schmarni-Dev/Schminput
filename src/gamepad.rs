@@ -13,8 +13,14 @@ use crate::{
 
 pub struct GamepadPlugin;
 
+// /// Use the index of a gamepad in this resource in a subaction path to referebce
+// /// a specific gamepad
+// #[derive(Default, Resource, Clone)]
+// pub struct GamepadRegistery(pub Vec<Gamepad>);
+
 impl Plugin for GamepadPlugin {
     fn build(&self, app: &mut App) {
+        // app.init_resource::<GamepadRegistery>();
         app.add_systems(
             PreUpdate,
             sync_actions.in_set(SchminputSet::SyncInputActions),
@@ -157,12 +163,12 @@ fn handle_gamepad_inputs(
                 warn!("axis.get returned None, idk what that means");
                 return;
             };
-
             if let Some(bool_value) = bool_value {
-                bool_value.0 |= v > 0.0;
+                // let curr = bool_value.get(&path).copied().unwrap_or(false);
+                // bool_value.set_value(path, curr | v > 0.0) ;
             }
             if let Some(float_value) = float_value {
-                float_value.0 += v * binding.axis_dir.as_multipier() * delta_multiplier;
+                *float_value.0 += v * binding.axis_dir.as_multipier() * delta_multiplier;
             }
             if let Some(vec2_value) = vec2_value {
                 match binding.axis {
@@ -183,10 +189,10 @@ fn handle_gamepad_inputs(
             let v = button.pressed(GamepadButton::new(gamepad, button_type));
 
             if let Some(bool_value) = bool_value {
-                bool_value.0 |= v;
+                *bool_value.0 |= v;
             }
             if let Some(float_value) = float_value {
-                float_value.0 +=
+                *float_value.0 +=
                     v as u8 as f32 * binding.axis_dir.as_multipier() * delta_multiplier;
             }
             if let Some(vec2_value) = vec2_value {

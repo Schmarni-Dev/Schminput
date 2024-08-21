@@ -3,12 +3,12 @@ use std::time::Duration;
 use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
 use schminput::prelude::*;
-use schminput::DefaultSchmugins;
+use schminput::DefaultSchminputPlugins;
 
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(DefaultSchmugins);
+    app.add_plugins(DefaultSchminputPlugins);
     app.add_systems(Startup, setup);
     app.add_systems(Update, run);
 
@@ -102,14 +102,14 @@ fn run(
     mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
 ) {
     for action in move_action.into_iter() {
-        info!("move: {:?}", action);
+        info!("move: {}", action.any);
     }
     for action in look_action.into_iter() {
-        info!("look: {:?}", action);
+        info!("look: {}", action.any);
     }
     for action in jump_action.into_iter() {
-        info!("jump: {:?}", action);
-        if action.0 {
+        info!("jump: {}", action.any);
+        if action.any {
             //panics if action doesn't exist
             jump_haptic_action
                 .single_mut()
