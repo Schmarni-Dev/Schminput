@@ -75,7 +75,7 @@ pub fn sync_actions(
                 })
                 .map(|(e, _)| *e);
 
-            let delta_mutiplier = match button.premultipy_delta_time {
+            let delta_mutiplier = match button.premultiply_delta_time {
                 true => time.delta_seconds(),
                 false => 1.0,
             };
@@ -200,8 +200,54 @@ pub struct MouseButtonBinding {
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
     pub button: MouseButton,
-    pub premultipy_delta_time: bool,
+    pub premultiply_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
+}
+
+impl MouseButtonBinding {
+    pub fn new(button: MouseButton) -> MouseButtonBinding {
+        MouseButtonBinding {
+            axis: default(),
+            axis_dir: default(),
+            button,
+            premultiply_delta_time: default(),
+            behavior: default(),
+        }
+    }
+    pub fn x_axis(mut self) -> Self {
+        self.axis = InputAxis::X;
+        self
+    }
+
+    pub fn y_axis(mut self) -> Self {
+        self.axis = InputAxis::Y;
+        self
+    }
+
+    pub fn positive_axis_dir(mut self) -> Self {
+        self.axis_dir = InputAxisDirection::Positive;
+        self
+    }
+
+    pub fn negative_axis_dir(mut self) -> Self {
+        self.axis_dir = InputAxisDirection::Negative;
+        self
+    }
+
+    pub fn premultiply_delta_time(mut self) -> Self {
+        self.premultiply_delta_time = true;
+        self
+    }
+
+    pub fn just_pressed(mut self) -> Self {
+        self.behavior = ButtonInputBeheavior::JustPressed;
+        self
+    }
+
+    pub fn just_released(mut self) -> Self {
+        self.behavior = ButtonInputBeheavior::JustReleased;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Default, Debug, Reflect)]

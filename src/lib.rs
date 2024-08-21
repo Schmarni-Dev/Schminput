@@ -8,7 +8,7 @@ pub mod subaction_paths;
 
 use std::{borrow::Cow, hash::Hash, mem};
 
-use bevy::{app::PluginGroupBuilder, ecs::system::EntityCommands, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*};
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
@@ -169,63 +169,43 @@ impl ButtonInputBeheavior {
     }
 }
 
-pub struct ActionSetHeaderBuilder {
-    id: ActionSetName,
-    name: Option<LocalizedActionSetName>,
+#[derive(Bundle, Clone, Debug)]
+pub struct ActionSetBundle {
+    pub id: ActionSetName,
+    pub name: LocalizedActionSetName,
 }
 
-impl ActionSetHeaderBuilder {
-    pub fn new(id: impl Into<Cow<'static, str>>) -> ActionSetHeaderBuilder {
-        ActionSetHeaderBuilder {
+impl ActionSetBundle {
+    pub fn new(
+        id: impl Into<Cow<'static, str>>,
+        name: impl Into<Cow<'static, str>>,
+    ) -> ActionSetBundle {
+        ActionSetBundle {
             id: ActionSetName(id.into()),
-            name: None,
+            name: LocalizedActionSetName(name.into()),
         }
-    }
-    pub fn with_name(mut self, name: impl Into<Cow<'static, str>>) -> Self {
-        self.name = Some(LocalizedActionSetName(name.into()));
-        self
-    }
-    pub fn build<'a>(self, cmds: &'a mut Commands) -> EntityCommands<'a> {
-        let mut e_cmds = cmds.spawn(self.id);
-        if let Some(name) = self.name {
-            e_cmds.insert(name);
-        }
-
-        e_cmds
     }
 }
 
-pub struct ActionHeaderBuilder {
-    id: ActionName,
-    name: Option<LocalizedActionName>,
-    set: Option<ActionSet>,
+#[derive(Bundle, Clone, Debug)]
+pub struct ActionBundle {
+    pub id: ActionName,
+    pub name: LocalizedActionName,
+    pub set: ActionSet,
+    pub paths: RequestedSubactionPaths,
 }
 
-impl ActionHeaderBuilder {
-    pub fn new(id: impl Into<Cow<'static, str>>) -> ActionHeaderBuilder {
-        ActionHeaderBuilder {
+impl ActionBundle {
+    pub fn new(
+        id: impl Into<Cow<'static, str>>,
+        name: impl Into<Cow<'static, str>>,
+        set: Entity,
+    ) -> ActionBundle {
+        ActionBundle {
             id: ActionName(id.into()),
-            name: None,
-            set: None,
+            name: LocalizedActionName(name.into()),
+            set: ActionSet(set),
+            paths: RequestedSubactionPaths::default(),
         }
-    }
-    pub fn with_name(mut self, name: impl Into<Cow<'static, str>>) -> Self {
-        self.name = Some(LocalizedActionName(name.into()));
-        self
-    }
-    pub fn with_set(mut self, set: Entity) -> Self {
-        self.set = Some(ActionSet(set));
-        self
-    }
-    pub fn build<'a>(self, cmds: &'a mut Commands) -> EntityCommands<'a> {
-        let mut e_cmds = cmds.spawn((self.id, RequestedSubactionPaths::default()));
-        if let Some(name) = self.name {
-            e_cmds.insert(name);
-        }
-        if let Some(set) = self.set {
-            e_cmds.insert(set);
-        }
-
-        e_cmds
     }
 }
