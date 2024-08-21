@@ -12,12 +12,8 @@ name = "xr"
 required-features = ["xr"]
 
 [features]
-default = []
+default = ["xr"]
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
-
-# [workspace]
-# resolver = "2"
-# members = ["example", "xr_example"]
 
 [dependencies]
 bevy.workspace = true
@@ -36,5 +32,3 @@ openxr = { version = "0.18", default-features = false }
 [dev-dependencies]
 bevy_mod_openxr = { workspace = true, default-features = true }
 bevy = { workspace = true, default-features = true }
-# color-eyre = "0.6.2"
-# eyre = "0.6.10"

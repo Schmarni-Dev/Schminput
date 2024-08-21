@@ -2,8 +2,8 @@ use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
-    SchminputSet, Vec2ActionValue,
+    ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct MousePlugin;
@@ -55,17 +55,22 @@ fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &MouseBindings,
+        &ActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
     )>,
+    set_query: Query<&ActionSetEnabled>,
     path_query: Query<&MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
     mut delta_motion: EventReader<MouseMotion>,
 ) {
-    for (binding, mut bool_value, mut f32_value, mut vec2_value, paths) in &mut action_query {
+    for (binding, set, mut bool_value, mut f32_value, mut vec2_value, paths) in &mut action_query {
+        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+            continue;
+        };
         for button in &binding.buttons {
             let paths = paths
                 .iter()

@@ -20,8 +20,8 @@ use crate::{
     subaction_paths::{
         RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
     },
-    ActionName, ActionSet, ActionSetName, BoolActionValue, F32ActionValue, LocalizedActionName,
-    LocalizedActionSetName, SchminputSet, Vec2ActionValue,
+    ActionName, ActionSet, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue,
+    LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
 
 pub const OCULUS_TOUCH_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
@@ -109,10 +109,11 @@ fn insert_xr_subaction_paths(
     }
 }
 
-fn sync_action_sets(query: Query<&OxrActionSet>, session: Res<OxrSession>) {
+fn sync_action_sets(query: Query<(&OxrActionSet, &ActionSetEnabled)>, session: Res<OxrSession>) {
     let sets = query
         .iter()
-        .map(|set| openxr::ActiveActionSet::new(set))
+        .filter(|(_, v)| v.0)
+        .map(|(set, _)| openxr::ActiveActionSet::new(set))
         .collect::<Vec<_>>();
     let result = session.sync_actions(&sets);
     if let Err(err) = result {

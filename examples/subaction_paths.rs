@@ -37,7 +37,7 @@ fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
     sub_paths.push(paths.get_or_create_path("/mouse/button", &mut cmds));
     sub_paths.push(paths.get_or_create_path("/keyboard", &mut cmds));
     let action = cmds
-        .spawn(ActionHeaderBuilder::new("action", "Action", set))
+        .spawn(ActionBundle::new("action", "Action", set))
         .insert(BoolActionValue::default())
         .insert(KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)))
         .insert(MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)))

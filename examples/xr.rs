@@ -22,15 +22,9 @@ fn main() {
     app.add_plugins(bevy_mod_openxr::add_xr_plugins(DefaultPlugins));
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_plugins(schminput::DefaultSchminputPlugins);
-    // app.add_systems(XrPostSetup, xr_add_forward_ref);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
     app.add_systems(Update, run);
-    // app.add_systems(Startup, spawn_controllers_example);
-    // app.add_systems(
-    //     Update,
-    //     (apply_turning, apply_forward, apply_movement).chain(),
-    // );
 
     app.run();
 }

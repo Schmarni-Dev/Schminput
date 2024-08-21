@@ -129,6 +129,9 @@ impl InputAxis {
     }
 }
 
+#[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
+pub struct ActionSetEnabled(pub bool);
+
 // there might be a better name for this
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum InputAxisDirection {
@@ -173,6 +176,7 @@ impl ButtonInputBeheavior {
 pub struct ActionSetBundle {
     pub id: ActionSetName,
     pub name: LocalizedActionSetName,
+    pub enabled: ActionSetEnabled,
 }
 
 impl ActionSetBundle {
@@ -183,6 +187,7 @@ impl ActionSetBundle {
         ActionSetBundle {
             id: ActionSetName(id.into()),
             name: LocalizedActionSetName(name.into()),
+            enabled: ActionSetEnabled(true),
         }
     }
 }
