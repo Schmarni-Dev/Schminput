@@ -61,9 +61,8 @@ pub fn sync_actions(
                 false => 1.0,
             };
             if let Some(button) = bool_value.as_mut() {
-                *button.0 |= binding.behavior.apply(&input, binding.key);
+                button.any |= binding.behavior.apply(&input, binding.key);
                 for p in paths.iter() {
-                    // Might be broken?
                     *button.entry_with_path(**p).or_default() |=
                         binding.behavior.apply(&input, binding.key);
                 }
@@ -72,7 +71,7 @@ pub fn sync_actions(
                 if binding.axis == InputAxis::X {
                     let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
 
-                    *float.0 += val * binding.axis_dir.as_multipier() * delta_multiplier;
+                    float.any += val * binding.axis_dir.as_multipier() * delta_multiplier;
                     for p in paths.iter() {
                         *float.entry_with_path(**p).or_default() +=
                             val * binding.axis_dir.as_multipier() * delta_multiplier;
@@ -83,10 +82,10 @@ pub fn sync_actions(
                 let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
                 match binding.axis {
                     InputAxis::X => {
-                        vec.x += val * binding.axis_dir.as_multipier() * delta_multiplier
+                        vec.any.x += val * binding.axis_dir.as_multipier() * delta_multiplier
                     }
                     InputAxis::Y => {
-                        vec.y += val * binding.axis_dir.as_multipier() * delta_multiplier
+                        vec.any.y += val * binding.axis_dir.as_multipier() * delta_multiplier
                     }
                 };
                 for p in paths.iter() {

@@ -50,6 +50,9 @@ impl SubactionPaths {
             path
         })
     }
+    pub fn get<P: Into<CowArc<'static, str>>>(&self, path: P) -> Option<SubactionPath> {
+        self.map.get(&path.into()).copied()
+    }
 }
 
 /// Subaction Path for action
@@ -57,7 +60,7 @@ impl SubactionPaths {
 #[repr(transparent)]
 pub struct SubactionPath(pub Entity);
 
-#[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, Default)]
+#[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, Default, DerefMut)]
 pub struct RequestedSubactionPaths(pub Vec<SubactionPath>);
 
 #[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, DerefMut, Default)]

@@ -102,14 +102,14 @@ fn run(
     mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
 ) {
     for action in move_action.into_iter() {
-        info!("move: {:?}", action);
+        info!("move: {}", action.any);
     }
     for action in look_action.into_iter() {
-        info!("look: {:?}", action);
+        info!("look: {}", action.any);
     }
     for action in jump_action.into_iter() {
-        info!("jump: {:?}", action);
-        if action.0 {
+        info!("jump: {}", action.any);
+        if action.any {
             //panics if action doesn't exist
             jump_haptic_action
                 .single_mut()

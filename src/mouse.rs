@@ -112,32 +112,38 @@ pub fn sync_actions(
         let Some(movement) = binding.movement else {
             continue;
         };
-        for path in paths
+        let sub_paths = paths
             .iter()
             .filter_map(|e| Some((e, path_query.get(e.0).ok()?)))
             .filter(|(_, p)| {
                 **p == MouseSubactionPath::DeltaMotion || **p == MouseSubactionPath::All
             })
             .map(|(e, _)| *e)
-        {
-            if movement.motion_type == MouseMotionType::DeltaMotion {
-                let mut delta = Vec2::ZERO;
-                for e in delta_motion.read() {
-                    let mut v = e.delta;
-                    v.y *= -1.0;
-                    delta += v * movement.multiplier;
+            .collect::<Vec<_>>();
+
+        if movement.motion_type == MouseMotionType::DeltaMotion {
+            let mut delta = Vec2::ZERO;
+            for e in delta_motion.read() {
+                let mut v = e.delta;
+                v.y *= -1.0;
+                delta += v * movement.multiplier;
+            }
+            if let Some(boolean) = bool_value.as_mut() {
+                *boolean.0 |= delta != Vec2::ZERO;
+                for path in sub_paths.iter() {
+                    *boolean.entry_with_path(*path).or_default() |= delta != Vec2::ZERO;
                 }
-                if let Some(boolean) = bool_value.as_mut() {
-                    *boolean.0 |= delta != Vec2::ZERO;
-                    *boolean.entry_with_path(path).or_default() |= delta != Vec2::ZERO;
+            }
+            if let Some(float) = f32_value.as_mut() {
+                *float.0 += delta.x;
+                for path in sub_paths.iter() {
+                    *float.entry_with_path(*path).or_default() += delta.x;
                 }
-                if let Some(float) = f32_value.as_mut() {
-                    *float.0 += delta.x;
-                    *float.entry_with_path(path).or_default() += delta.x;
-                }
-                if let Some(vec2) = vec2_value.as_mut() {
-                    *vec2.0 += delta;
-                    *vec2.entry_with_path(path).or_default() += delta;
+            }
+            if let Some(vec2) = vec2_value.as_mut() {
+                *vec2.0 += delta;
+                for path in sub_paths.iter() {
+                    *vec2.entry_with_path(*path).or_default() += delta;
                 }
             }
         }
