@@ -13,6 +13,7 @@ use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPl
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
 pub enum SchminputSet {
+    HandleNewSubactionPaths,
     ClearValues,
     SyncInputActions,
     SyncOutputActions,
@@ -24,7 +25,12 @@ impl Plugin for SchminputPlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             PreUpdate,
-            (SchminputSet::ClearValues, SchminputSet::SyncInputActions).chain(),
+            (
+                SchminputSet::HandleNewSubactionPaths,
+                SchminputSet::ClearValues,
+                SchminputSet::SyncInputActions,
+            )
+                .chain(),
         );
         // Probably not needed, but for reference,
         app.configure_sets(PostUpdate, SchminputSet::SyncOutputActions);

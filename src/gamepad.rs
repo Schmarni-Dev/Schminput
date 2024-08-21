@@ -13,8 +13,14 @@ use crate::{
 
 pub struct GamepadPlugin;
 
+// /// Use the index of a gamepad in this resource in a subaction path to referebce
+// /// a specific gamepad
+// #[derive(Default, Resource, Clone)]
+// pub struct GamepadRegistery(pub Vec<Gamepad>);
+
 impl Plugin for GamepadPlugin {
     fn build(&self, app: &mut App) {
+        // app.init_resource::<GamepadRegistery>();
         app.add_systems(
             PreUpdate,
             sync_actions.in_set(SchminputSet::SyncInputActions),

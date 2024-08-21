@@ -11,10 +11,7 @@ use bevy_mod_openxr::{
     spaces::OxrSpaceSyncSet,
 };
 use bevy_mod_xr::{
-    session::{
-        session_available, session_running, XrPreSessionEnd, XrSessionCreated,
-        XrSessionCreatedEvent,
-    },
+    session::{session_available, session_running, XrPreSessionEnd, XrSessionCreated},
     spaces::XrSpace,
     types::XrPose,
 };
@@ -47,6 +44,7 @@ impl Plugin for OxrInputPlugin {
         );
         app.add_systems(XrSessionCreated, attach_action_sets);
         app.add_systems(OxrSendActionBindings, suggest_bindings);
+        // TODO: make this runnable at multiple points if possible?
         app.add_systems(
             PostStartup,
             (insert_xr_subaction_paths, create_input_actions)
