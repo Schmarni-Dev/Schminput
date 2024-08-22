@@ -7,8 +7,8 @@ use bevy::{
 };
 
 use crate::{
-    BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
-    SchminputSet, Vec2ActionValue,
+    ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct GamepadPlugin;
@@ -41,10 +41,18 @@ fn clear_haptic(mut query: Query<&mut GamepadHapticOutput>) {
 
 fn sync_haptics(
     mut gamepad_haptic_event: EventWriter<GamepadRumbleRequest>,
-    haptic_query: Query<(&GamepadHapticOutputBindings, &GamepadHapticOutput)>,
+    haptic_query: Query<(
+        &GamepadHapticOutputBindings,
+        &GamepadHapticOutput,
+        &ActionSet,
+    )>,
+    set_query: Query<&ActionSetEnabled>,
     gamepads: Res<Gamepads>,
 ) {
-    for (bindings, out) in &haptic_query {
+    for (bindings, out, set) in &haptic_query {
+        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+            continue;
+        };
         for (device, binding) in bindings
             .bindings
             .iter()
@@ -95,13 +103,18 @@ fn sync_actions(
     gamepads: Res<Gamepads>,
     mut query: Query<(
         &GamepadBindings,
+        &ActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
     )>,
+    set_query: Query<&ActionSetEnabled>,
     time: Res<Time>,
 ) {
-    for (gamepad_bindings, mut bool_value, mut float_value, mut vec2_value) in &mut query {
+    for (gamepad_bindings, set, mut bool_value, mut float_value, mut vec2_value) in &mut query {
+        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+            continue;
+        };
         for (device, bindings) in &gamepad_bindings.bindings {
             match device {
                 GamepadBindingDevice::Any => {
@@ -164,8 +177,7 @@ fn handle_gamepad_inputs(
                 return;
             };
             if let Some(bool_value) = bool_value {
-                // let curr = bool_value.get(&path).copied().unwrap_or(false);
-                // bool_value.set_value(path, curr | v > 0.0) ;
+                *bool_value.0 |= v > 0.0;
             }
             if let Some(float_value) = float_value {
                 *float_value.0 += v * binding.axis_dir.as_multipier() * delta_multiplier;

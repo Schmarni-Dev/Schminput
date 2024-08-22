@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
-    SchminputSet, Vec2ActionValue,
+    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr}, ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue
 };
 
 impl Plugin for KeyboardPlugin {
@@ -38,18 +36,23 @@ pub fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &KeyboardBindings,
+        &ActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
     )>,
     path_query: Query<Has<KeyboardSubactionPath>>,
+    set_query: Query<&ActionSetEnabled>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
 ) {
-    for (bindings, mut bool_value, mut f32_value, mut vec2_value, requested_paths) in
+    for (bindings, set, mut bool_value, mut f32_value, mut vec2_value, requested_paths) in
         &mut action_query
     {
+        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+            continue;
+        };
         let paths = requested_paths
             .0
             .iter()

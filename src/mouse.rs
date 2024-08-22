@@ -2,8 +2,8 @@ use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection,
-    SchminputSet, Vec2ActionValue,
+    ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct MousePlugin;
@@ -55,17 +55,22 @@ fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &MouseBindings,
+        &ActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
     )>,
+    set_query: Query<&ActionSetEnabled>,
     path_query: Query<&MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
     mut delta_motion: EventReader<MouseMotion>,
 ) {
-    for (binding, mut bool_value, mut f32_value, mut vec2_value, paths) in &mut action_query {
+    for (binding, set, mut bool_value, mut f32_value, mut vec2_value, paths) in &mut action_query {
+        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+            continue;
+        };
         for button in &binding.buttons {
             let paths = paths
                 .iter()
@@ -75,7 +80,7 @@ pub fn sync_actions(
                 })
                 .map(|(e, _)| *e);
 
-            let delta_mutiplier = match button.premultipy_delta_time {
+            let delta_mutiplier = match button.premultiply_delta_time {
                 true => time.delta_seconds(),
                 false => 1.0,
             };
@@ -200,8 +205,54 @@ pub struct MouseButtonBinding {
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
     pub button: MouseButton,
-    pub premultipy_delta_time: bool,
+    pub premultiply_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
+}
+
+impl MouseButtonBinding {
+    pub fn new(button: MouseButton) -> MouseButtonBinding {
+        MouseButtonBinding {
+            axis: default(),
+            axis_dir: default(),
+            button,
+            premultiply_delta_time: default(),
+            behavior: default(),
+        }
+    }
+    pub fn x_axis(mut self) -> Self {
+        self.axis = InputAxis::X;
+        self
+    }
+
+    pub fn y_axis(mut self) -> Self {
+        self.axis = InputAxis::Y;
+        self
+    }
+
+    pub fn positive_axis_dir(mut self) -> Self {
+        self.axis_dir = InputAxisDirection::Positive;
+        self
+    }
+
+    pub fn negative_axis_dir(mut self) -> Self {
+        self.axis_dir = InputAxisDirection::Negative;
+        self
+    }
+
+    pub fn premultiply_delta_time(mut self) -> Self {
+        self.premultiply_delta_time = true;
+        self
+    }
+
+    pub fn just_pressed(mut self) -> Self {
+        self.behavior = ButtonInputBeheavior::JustPressed;
+        self
+    }
+
+    pub fn just_released(mut self) -> Self {
+        self.behavior = ButtonInputBeheavior::JustReleased;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Default, Debug, Reflect)]

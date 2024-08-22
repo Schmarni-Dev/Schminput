@@ -3,7 +3,7 @@ use schminput::{
     gamepad::{GamepadBinding, GamepadBindingDevice, GamepadBindings},
     openxr::{AttachSpaceToEntity, OxrActionBlueprint, SpaceActionValue, OCULUS_TOUCH_PROFILE},
     prelude::*,
-    ActionHeaderBuilder, ActionSetHeaderBuilder,
+    ActionBundle, ActionSetBundle,
 };
 #[derive(Component, Clone, Copy)]
 struct HandLeft;
@@ -22,31 +22,16 @@ fn main() {
     app.add_plugins(bevy_mod_openxr::add_xr_plugins(DefaultPlugins));
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_plugins(schminput::DefaultSchminputPlugins);
-    // app.add_systems(XrPostSetup, xr_add_forward_ref);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
     app.add_systems(Update, run);
-    // app.add_systems(Startup, spawn_controllers_example);
-    // app.add_systems(
-    //     Update,
-    //     (apply_turning, apply_forward, apply_movement).chain(),
-    // );
 
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let player_set = ActionSetHeaderBuilder::new("player")
-        .with_name("Player")
-        .build(&mut cmds)
-        .id();
-    let pose_set = ActionSetHeaderBuilder::new("pose")
-        .with_name("Poses")
-        .build(&mut cmds)
-        .id();
-    ActionHeaderBuilder::new("move")
-        .with_name("Move")
-        .with_set(player_set)
-        .build(&mut cmds)
+    let player_set = cmds.spawn(ActionSetBundle::new("player", "Player")).id();
+    let pose_set = cmds.spawn(ActionSetBundle::new("pose", "Poses")).id();
+    cmds.spawn(ActionBundle::new("move", "Move", player_set))
         .insert((
             MoveAction,
             OxrActionBlueprint::default()
@@ -55,10 +40,7 @@ fn setup(mut cmds: Commands) {
                 .end(),
             Vec2ActionValue::default(),
         ));
-    ActionHeaderBuilder::new("look")
-        .with_name("Look")
-        .with_set(player_set)
-        .build(&mut cmds)
+    cmds.spawn(ActionBundle::new("look", "Look", player_set))
         .insert((
             LookAction,
             OxrActionBlueprint::default()
@@ -67,10 +49,7 @@ fn setup(mut cmds: Commands) {
                 .end(),
             F32ActionValue::default(),
         ));
-    ActionHeaderBuilder::new("jump")
-        .with_name("Jump")
-        .with_set(player_set)
-        .build(&mut cmds)
+    cmds.spawn(ActionBundle::new("jump", "Jump", player_set))
         .insert((
             JumpAction,
             OxrActionBlueprint::default()
@@ -87,32 +66,34 @@ fn setup(mut cmds: Commands) {
     let left_hand = cmds.spawn((SpatialBundle::default(), HandLeft)).id();
 
     let right_hand = cmds.spawn((SpatialBundle::default(), HandRight)).id();
-    ActionHeaderBuilder::new("hand_left_pose")
-        .with_name("Left Hand Pose")
-        .with_set(pose_set)
-        .build(&mut cmds)
-        .insert((
-            MoveAction,
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/left/input/grip/pose")
-                .end(),
-            AttachSpaceToEntity(left_hand),
-            SpaceActionValue::default(),
-        ));
-    ActionHeaderBuilder::new("hand_right_pose")
-        .with_name("Right Hand Pose")
-        .with_set(pose_set)
-        .build(&mut cmds)
-        .insert((
-            MoveAction,
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/right/input/aim/pose")
-                .end(),
-            AttachSpaceToEntity(right_hand),
-            SpaceActionValue::default(),
-        ));
+    cmds.spawn(ActionBundle::new(
+        "hand_left_pose",
+        "Left Hand Pose",
+        pose_set,
+    ))
+    .insert((
+        MoveAction,
+        OxrActionBlueprint::default()
+            .interaction_profile(OCULUS_TOUCH_PROFILE)
+            .binding("/user/hand/left/input/grip/pose")
+            .end(),
+        AttachSpaceToEntity(left_hand),
+        SpaceActionValue::default(),
+    ));
+    cmds.spawn(ActionBundle::new(
+        "hand_right_pose",
+        "Right Hand Pose",
+        pose_set,
+    ))
+    .insert((
+        MoveAction,
+        OxrActionBlueprint::default()
+            .interaction_profile(OCULUS_TOUCH_PROFILE)
+            .binding("/user/hand/right/input/aim/pose")
+            .end(),
+        AttachSpaceToEntity(right_hand),
+        SpaceActionValue::default(),
+    ));
 }
 
 fn run(
@@ -123,9 +104,9 @@ fn run(
     right_hand: Query<&GlobalTransform, With<HandRight>>,
     mut gizmos: Gizmos,
 ) {
-    // info!("move: {}", move_action.single().any);
-    // info!("look: {}", look_action.single().any);
-    // info!("jump: {}", jump_action.single().any);
+    info!("move: {}", move_action.single().any);
+    info!("look: {}", look_action.single().any);
+    info!("jump: {}", jump_action.single().any);
     for hand in left_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
         gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);

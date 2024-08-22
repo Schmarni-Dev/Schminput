@@ -1,11 +1,5 @@
 use bevy::prelude::*;
-use schminput::{
-    keyboard::KeyboardBindings,
-    mouse::MouseBindings,
-    subaction_paths::{RequestedSubactionPaths, SubactionPaths},
-    ActionHeaderBuilder, ActionSetHeaderBuilder, BoolActionValue, ButtonInputBeheavior,
-    DefaultSchminputPlugins, InputAxis, InputAxisDirection,
-};
+use schminput::prelude::*;
 
 fn main() -> AppExit {
     App::new()
@@ -38,31 +32,15 @@ fn print_action(action: Res<Action>, query: Query<&BoolActionValue>, paths: Res<
 }
 
 fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = ActionSetHeaderBuilder::new("core")
-        .with_name("Core")
-        .build(&mut cmds)
-        .id();
+    let set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
     let mut sub_paths = RequestedSubactionPaths::default();
     sub_paths.push(paths.get_or_create_path("/mouse/button", &mut cmds));
     sub_paths.push(paths.get_or_create_path("/keyboard", &mut cmds));
-    let action = ActionHeaderBuilder::new("action")
-        .with_name("Action")
-        .with_set(set)
-        .build(&mut cmds)
+    let action = cmds
+        .spawn(ActionBundle::new("action", "Action", set))
         .insert(BoolActionValue::default())
-        .insert(
-            KeyboardBindings::default()
-                .add_binding(schminput::keyboard::KeyboardBinding::new(KeyCode::Space)),
-        )
-        .insert(
-            MouseBindings::default().add_binding(schminput::mouse::MouseButtonBinding {
-                axis: InputAxis::X,
-                axis_dir: InputAxisDirection::Positive,
-                button: MouseButton::Left,
-                premultipy_delta_time: false,
-                behavior: ButtonInputBeheavior::Pressed,
-            }),
-        )
+        .insert(KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)))
+        .insert(MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)))
         .insert(sub_paths)
         .id();
     cmds.insert_resource(Action(action));
