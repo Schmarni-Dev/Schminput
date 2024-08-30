@@ -20,7 +20,7 @@ use crate::{
     subaction_paths::{
         RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
     },
-    ActionName, ActionSet, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue,
+    ActionName, InActionSet, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
 
@@ -149,7 +149,7 @@ fn create_input_actions(
     mut cmds: Commands,
     query: Query<(
         Entity,
-        &ActionSet,
+        &InActionSet,
         &ActionName,
         Option<&LocalizedActionName>,
         &RequestedSubactionPaths,

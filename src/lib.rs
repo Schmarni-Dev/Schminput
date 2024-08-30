@@ -8,7 +8,7 @@ pub mod subaction_paths;
 
 use std::{borrow::Cow, hash::Hash, mem};
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
@@ -38,6 +38,41 @@ impl Plugin for SchminputPlugin {
         app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
+        app.observe(
+            |trigger: Trigger<OnAdd, InActionSet>,
+             mut set_query: Query<&mut ActionsInSet>,
+             action_query: Query<&InActionSet>| {
+                if trigger.entity() == Entity::PLACEHOLDER {
+                    return;
+                }
+                let Ok(in_action_set) = action_query.get(trigger.entity()) else {
+                    return;
+                };
+                let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
+                    return;
+                };
+                actions_in_set.0.insert(trigger.entity());
+            },
+        );
+
+        app.observe(
+            |trigger: Trigger<OnRemove, InActionSet>,
+             mut set_query: Query<&mut ActionsInSet>,
+             action_query: Query<&InActionSet>| {
+                if trigger.entity() == Entity::PLACEHOLDER {
+                    warn!("OnRemove entity is Placeholder");
+                    return;
+                }
+                let Ok(in_action_set) = action_query.get(trigger.entity()) else {
+                    warn!("OnRemove unable to get removed component");
+                    return;
+                };
+                let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
+                    return;
+                };
+                actions_in_set.0.insert(trigger.entity());
+            },
+        );
     }
 }
 
@@ -76,7 +111,10 @@ impl PluginGroup for DefaultSchminputPlugins {
 
 /// The ActionSet This Action belongs to.
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref)]
-pub struct ActionSet(pub Entity);
+pub struct InActionSet(pub Entity);
+
+#[derive(Debug, Clone, Component, Reflect, Deref, Default)]
+pub struct ActionsInSet(pub EntityHashSet<Entity>);
 
 /// The Display name of the Action Set.
 #[derive(Debug, Clone, Component, Reflect, Deref)]
@@ -114,6 +152,15 @@ pub enum InputAxis {
     Y,
 }
 
+impl std::fmt::Display for InputAxis {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputAxis::X => f.write_str("X Axis"),
+            InputAxis::Y => f.write_str("Y Axis"),
+        }
+    }
+}
+
 impl InputAxis {
     pub fn vec_axis(&self, vec: Vec2) -> f32 {
         match self {
@@ -138,6 +185,15 @@ pub enum InputAxisDirection {
     #[default]
     Positive,
     Negative,
+}
+
+impl std::fmt::Display for InputAxisDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputAxisDirection::Positive => f.write_str("+"),
+            InputAxisDirection::Negative => f.write_str("-"),
+        }
+    }
 }
 
 impl InputAxisDirection {
@@ -177,6 +233,7 @@ pub struct ActionSetBundle {
     pub id: ActionSetName,
     pub name: LocalizedActionSetName,
     pub enabled: ActionSetEnabled,
+    pub actions: ActionsInSet,
 }
 
 impl ActionSetBundle {
@@ -188,6 +245,7 @@ impl ActionSetBundle {
             id: ActionSetName(id.into()),
             name: LocalizedActionSetName(name.into()),
             enabled: ActionSetEnabled(true),
+            actions: ActionsInSet::default(),
         }
     }
 }
@@ -196,7 +254,7 @@ impl ActionSetBundle {
 pub struct ActionBundle {
     pub id: ActionName,
     pub name: LocalizedActionName,
-    pub set: ActionSet,
+    pub set: InActionSet,
     pub paths: RequestedSubactionPaths,
 }
 
@@ -209,7 +267,7 @@ impl ActionBundle {
         ActionBundle {
             id: ActionName(id.into()),
             name: LocalizedActionName(name.into()),
-            set: ActionSet(set),
+            set: InActionSet(set),
             paths: RequestedSubactionPaths::default(),
         }
     }

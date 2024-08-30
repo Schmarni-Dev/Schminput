@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr}, ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue
+    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr}, InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue
 };
 
 impl Plugin for KeyboardPlugin {
@@ -36,7 +36,7 @@ pub fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &KeyboardBindings,
-        &ActionSet,
+        &InActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,

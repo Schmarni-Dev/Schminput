@@ -2,7 +2,7 @@ use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
     InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
@@ -55,7 +55,7 @@ fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &MouseBindings,
-        &ActionSet,
+        &InActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,

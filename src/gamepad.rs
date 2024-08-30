@@ -7,7 +7,7 @@ use bevy::{
 };
 
 use crate::{
-    ActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
     InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
@@ -44,7 +44,7 @@ fn sync_haptics(
     haptic_query: Query<(
         &GamepadHapticOutputBindings,
         &GamepadHapticOutput,
-        &ActionSet,
+        &InActionSet,
     )>,
     set_query: Query<&ActionSetEnabled>,
     gamepads: Res<Gamepads>,
@@ -103,7 +103,7 @@ fn sync_actions(
     gamepads: Res<Gamepads>,
     mut query: Query<(
         &GamepadBindings,
-        &ActionSet,
+        &InActionSet,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,

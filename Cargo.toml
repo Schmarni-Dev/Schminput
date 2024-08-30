@@ -1,5 +1,13 @@
 [package]
 name = "schminput"
+license.workspace= true
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+
+[workspace.package]
 license = "MIT OR Apache-2.0"
 version = "0.1.0-rc1.1"
 edition = "2021"
@@ -20,6 +28,9 @@ bevy.workspace = true
 bevy_mod_openxr = { workspace = true, optional = true }
 bevy_mod_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
+
+[workspace]
+members = ["schminput_rebinding_egui"]
 
 [workspace.dependencies]
 bevy = { version = "0.14", default-features = false }

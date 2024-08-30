@@ -11,5 +11,8 @@ pub use crate::openxr::{
 pub use crate::subaction_paths::{RequestedSubactionPaths, SubactionPaths};
 pub use crate::DefaultSchminputPlugins;
 pub use crate::{ActionBundle, ActionSetBundle};
-pub use crate::{ActionName, ActionSet, ActionSetEnabled, LocalizedActionName};
+pub use crate::{
+    ActionName, ActionSetEnabled, ActionSetName, ActionsInSet, InActionSet, LocalizedActionName,
+    LocalizedActionSetName,
+};
 pub use crate::{BoolActionValue, F32ActionValue, Vec2ActionValue};
