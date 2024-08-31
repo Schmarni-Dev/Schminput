@@ -1,6 +1,6 @@
 [package]
 name = "schminput"
-license.workspace= true
+license.workspace = true
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -14,6 +14,10 @@ edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
 description = "An Action Based Input Manager for Bevy"
 keywords = ["bevy", "input", "vr", "xr", "action"]
+
+[lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
 
 [[example]]
 name = "xr"

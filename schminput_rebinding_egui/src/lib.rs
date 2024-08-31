@@ -1,5 +1,6 @@
 pub mod egui;
 pub mod runtime_rebinding;
+pub mod default_bindings;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
 pub struct DefaultSchminputRebindingPlugins;

@@ -2,8 +2,8 @@ use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
-    InputAxisDirection, SchminputSet, Vec2ActionValue,
+    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
+    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct MousePlugin;
@@ -255,10 +255,18 @@ impl MouseButtonBinding {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, Reflect)]
+#[derive(Clone, Copy, Debug, Reflect)]
 pub struct MouseMotionBinding {
     pub motion_type: MouseMotionType,
     pub multiplier: f32,
+}
+impl Default for MouseMotionBinding {
+    fn default() -> Self {
+        Self {
+            motion_type: MouseMotionType::DeltaMotion,
+            multiplier: 1.0,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default, Debug, Reflect, PartialEq, Eq)]

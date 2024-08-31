@@ -7,10 +7,13 @@ repository.workspace = true
 description.workspace = true
 keywords.workspace = true
 
+[lints.clippy]
+too_many_arguments = "allow"
+type_complexity = "allow"
 
 [features]
 default = ["xr"]
-xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
+xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr", "schminput/xr"]
 
 [dependencies]
 schminput = { path = ".." }

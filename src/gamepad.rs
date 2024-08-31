@@ -7,8 +7,8 @@ use bevy::{
 };
 
 use crate::{
-    InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
-    InputAxisDirection, SchminputSet, Vec2ActionValue,
+    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
+    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct GamepadPlugin;
@@ -71,7 +71,7 @@ fn sync_haptics(
                                     intensity: binding.as_rumble_intensity(*intensity),
                                     gamepad,
                                 },
-                                GamepadHapticValue::Stop => todo!(),
+                                GamepadHapticValue::Stop => GamepadRumbleRequest::Stop { gamepad },
                             });
                         }
                     }
@@ -87,7 +87,7 @@ fn sync_haptics(
                                 intensity: binding.as_rumble_intensity(*intensity),
                                 gamepad,
                             },
-                            GamepadHapticValue::Stop => todo!(),
+                            GamepadHapticValue::Stop => GamepadRumbleRequest::Stop { gamepad },
                         });
                     }
                 }
@@ -304,7 +304,6 @@ impl GamepadBindings {
 pub struct GamepadBinding {
     pub source: GamepadBindingSource,
     pub button_behavior: ButtonInputBeheavior,
-    // pub device: GamepadBindingDevice,
     pub unbounded: bool,
     pub premultiply_delta_time: bool,
     pub axis: InputAxis,
@@ -315,7 +314,6 @@ impl GamepadBinding {
     pub fn button(button: GamepadButtonType) -> GamepadBinding {
         GamepadBinding {
             source: GamepadBindingSource::Button(button),
-            // device: GamepadBindingDevice::Any,
             unbounded: false,
             premultiply_delta_time: false,
             button_behavior: default(),
@@ -387,6 +385,27 @@ pub enum GamepadBindingSource {
     Axis(GamepadAxisType),
     Button(GamepadButtonType),
 }
+impl std::fmt::Display for GamepadBindingSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            GamepadBindingSource::Axis(GamepadAxisType::LeftZ) => "Left Trigger",
+            GamepadBindingSource::Axis(GamepadAxisType::RightZ) => "Right Trigger",
+            GamepadBindingSource::Axis(GamepadAxisType::LeftStickX) => "Left Stick X",
+            GamepadBindingSource::Axis(GamepadAxisType::LeftStickY) => "Left Stick Y",
+            GamepadBindingSource::Axis(GamepadAxisType::RightStickX) => "Right Stick X",
+            GamepadBindingSource::Axis(GamepadAxisType::RightStickY) => "Right Stick Y",
+            GamepadBindingSource::Axis(GamepadAxisType::Other(axis)) => {
+                return f.write_str(&format!("Axis {}", axis))
+            }
+            GamepadBindingSource::Button(GamepadButtonType::Other(button)) => {
+                return f.write_str(&format!("Button {}", button))
+            }
+
+            GamepadBindingSource::Button(v) => return v.debug(f),
+        })
+    }
+}
+
 #[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash)]
 pub enum GamepadBindingDevice {
     Any,

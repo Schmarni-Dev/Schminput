@@ -6,7 +6,7 @@ pub mod openxr;
 pub mod prelude;
 pub mod subaction_paths;
 
-use std::{borrow::Cow, hash::Hash, mem};
+use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
 use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
@@ -38,22 +38,7 @@ impl Plugin for SchminputPlugin {
         app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
-        app.observe(
-            |trigger: Trigger<OnAdd, InActionSet>,
-             mut set_query: Query<&mut ActionsInSet>,
-             action_query: Query<&InActionSet>| {
-                if trigger.entity() == Entity::PLACEHOLDER {
-                    return;
-                }
-                let Ok(in_action_set) = action_query.get(trigger.entity()) else {
-                    return;
-                };
-                let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
-                    return;
-                };
-                actions_in_set.0.insert(trigger.entity());
-            },
-        );
+        app.observe(on_add_in_action_set);
 
         app.observe(
             |trigger: Trigger<OnRemove, InActionSet>,
@@ -74,6 +59,24 @@ impl Plugin for SchminputPlugin {
             },
         );
     }
+}
+
+fn on_add_in_action_set(
+    trigger: Trigger<OnAdd, InActionSet>,
+    mut set_query: Query<&mut ActionsInSet>,
+    action_query: Query<&InActionSet>,
+) {
+    if trigger.entity() == Entity::PLACEHOLDER {
+        warn!("OnAdd entity is Placeholder");
+        return;
+    }
+    let Ok(in_action_set) = action_query.get(trigger.entity()) else {
+        return;
+    };
+    let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
+        return;
+    };
+    actions_in_set.0.insert(trigger.entity());
 }
 
 fn clean_bool(mut query: Query<&mut BoolActionValue>) {
@@ -152,7 +155,7 @@ pub enum InputAxis {
     Y,
 }
 
-impl std::fmt::Display for InputAxis {
+impl Display for InputAxis {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InputAxis::X => f.write_str("X Axis"),
@@ -187,7 +190,7 @@ pub enum InputAxisDirection {
     Negative,
 }
 
-impl std::fmt::Display for InputAxisDirection {
+impl Display for InputAxisDirection {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InputAxisDirection::Positive => f.write_str("+"),
@@ -206,6 +209,7 @@ impl InputAxisDirection {
     }
 }
 
+// TODO: add released?
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum ButtonInputBeheavior {
     JustPressed,
@@ -225,6 +229,15 @@ impl ButtonInputBeheavior {
             ButtonInputBeheavior::Pressed => input.pressed(value),
             ButtonInputBeheavior::JustReleased => input.just_released(value),
         }
+    }
+}
+impl Display for ButtonInputBeheavior {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ButtonInputBeheavior::JustPressed => "On Press",
+            ButtonInputBeheavior::Pressed => "Pressed",
+            ButtonInputBeheavior::JustReleased => "On Release",
+        })
     }
 }
 
