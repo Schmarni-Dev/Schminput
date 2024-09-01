@@ -1,7 +1,4 @@
-use bevy::{
-    input::gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent},
-    prelude::*,
-};
+use bevy::prelude::*;
 use schminput::prelude::*;
 
 fn main() -> AppExit {
@@ -10,7 +7,6 @@ fn main() -> AppExit {
         .add_plugins(DefaultSchminputPlugins)
         .add_systems(Startup, setup_actions)
         .add_systems(Update, print_action)
-        // .add_systems(Update, test)
         .run()
 }
 

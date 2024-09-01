@@ -1,3 +1,4 @@
+pub mod binding_modification;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
@@ -9,6 +10,7 @@ pub mod subaction_paths;
 use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
 use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
+use binding_modification::BindingModifiactions;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
@@ -269,6 +271,7 @@ pub struct ActionBundle {
     pub name: LocalizedActionName,
     pub set: InActionSet,
     pub paths: RequestedSubactionPaths,
+    pub modifications: BindingModifiactions,
 }
 
 impl ActionBundle {
@@ -282,6 +285,7 @@ impl ActionBundle {
             name: LocalizedActionName(name.into()),
             set: InActionSet(set),
             paths: RequestedSubactionPaths::default(),
+            modifications: BindingModifiactions::default(),
         }
     }
 }

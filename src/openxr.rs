@@ -17,10 +17,11 @@ use bevy_mod_xr::{
 };
 
 use crate::{
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{
         RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
     },
-    ActionName, InActionSet, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue,
+    ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
 
@@ -83,6 +84,9 @@ fn reset_space_values(mut query: Query<&mut SpaceActionValue>) {
 }
 
 #[derive(Component, Clone)]
+pub struct IsOxrSubactionPath;
+
+#[derive(Component, Clone)]
 pub struct OxrSubactionPath(pub openxr::Path);
 
 fn insert_xr_subaction_paths(
@@ -97,7 +101,11 @@ fn insert_xr_subaction_paths(
             continue;
         };
         if let Some(xr_path) = path.0.strip_prefix("/oxr") {
-            cmds.entity(e.0 .0)
+            cmds.entity(*e.0).insert(IsOxrSubactionPath);
+            if xr_path.is_empty() || xr_path == "/*" {
+                continue;
+            }
+            cmds.entity(*e.0)
                 .insert(OxrSubactionPath(match instance.string_to_path(xr_path) {
                     Ok(v) => v,
                     Err(err) => {
@@ -190,9 +198,7 @@ fn create_input_actions(
             .filter_map(|p| path_query.get(p.0).ok())
             .map(|p| p.0)
             .collect::<Vec<_>>();
-        let action = match (
-            has_bool, has_f32, has_vec2, has_space, /* has_pose || has_set_pose */
-        ) {
+        let action = match (has_bool, has_f32, has_vec2, has_space) {
             (true, false, false, false) => OxrAction::Bool(
                 action_set
                     .create_action(action_id, action_name, &paths)
@@ -240,8 +246,12 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut SpaceActionValue>,
         &RequestedSubactionPaths,
+        &BindingModifiactions,
     )>,
     path_query: Query<&OxrSubactionPath>,
+    simple_path_query: Query<Has<IsOxrSubactionPath>>,
+    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
+    time: Res<Time>,
 ) {
     // );
     for (
@@ -251,6 +261,7 @@ fn sync_input_actions(
         mut vec2_val,
         mut space_val,
         requested_subaction_paths,
+        modifications,
     ) in &mut query
     {
         let paths = requested_subaction_paths
@@ -258,12 +269,27 @@ fn sync_input_actions(
             .filter_map(|p| Some((*p, path_query.get(p.0).ok()?)))
             .map(|(sub_path, path)| (sub_path, path.0))
             .collect::<Vec<_>>();
+        let mut pre_mul_delta_time = modifications
+            .all_paths
+            .as_ref()
+            .and_then(|v| modification_query.get(v.0).ok())
+            .unwrap_or_default();
+        for (_, modification) in modifications
+            .per_path
+            .iter()
+            .filter(|(p, _)| simple_path_query.get(p.0).unwrap_or(false))
+        {
+            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
+        }
+        let delta_multiplier = match pre_mul_delta_time {
+            true => time.delta_seconds(),
+            false => 1.0,
+        };
         match action.as_mut() {
             OxrAction::Bool(action) => {
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
                         if let Some(val) = bool_val.as_mut() {
-                            // This might be broken!
                             val.any |= v.current_state;
                         } else {
                             warn!("Bool action but no bool Value!");
@@ -275,7 +301,6 @@ fn sync_input_actions(
                     match action.state(&session, path) {
                         Ok(v) => {
                             if let Some(val) = bool_val.as_mut() {
-                                // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() |=
                                     v.current_state;
                             } else {
@@ -290,8 +315,7 @@ fn sync_input_actions(
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
                         if let Some(val) = f32_val.as_mut() {
-                            // This might be broken!
-                            val.any += v.current_state;
+                            val.any += v.current_state * delta_multiplier;
                         } else {
                             warn!("F32 action but no f32 Value!");
                         }
@@ -302,9 +326,8 @@ fn sync_input_actions(
                     match action.state(&session, path) {
                         Ok(v) => {
                             if let Some(val) = f32_val.as_mut() {
-                                // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state;
+                                    v.current_state * delta_multiplier;
                             } else {
                                 warn!("F32 action but no f32 Value!");
                             }
@@ -318,7 +341,7 @@ fn sync_input_actions(
                     Ok(v) => {
                         if let Some(val) = vec2_val.as_mut() {
                             // This might be broken!
-                            val.any += v.current_state.to_vec2();
+                            val.any += v.current_state.to_vec2() * delta_multiplier;
                         } else {
                             warn!("Vec2 action but no Vec2 Value!");
                         }
@@ -331,7 +354,7 @@ fn sync_input_actions(
                             if let Some(val) = vec2_val.as_mut() {
                                 // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state.to_vec2();
+                                    v.current_state.to_vec2() * delta_multiplier;
                             } else {
                                 warn!("Vec2 action but no Vec2 Value!");
                             }

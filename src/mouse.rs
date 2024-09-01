@@ -1,6 +1,7 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
     ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
     InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
@@ -60,17 +61,33 @@ pub fn sync_actions(
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
+        &BindingModifiactions,
     )>,
     set_query: Query<&ActionSetEnabled>,
     path_query: Query<&MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
     mut delta_motion: EventReader<MouseMotion>,
+    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
-    for (binding, set, mut bool_value, mut f32_value, mut vec2_value, paths) in &mut action_query {
+    for (binding, set, mut bool_value, mut f32_value, mut vec2_value, paths, modifications) in
+        &mut action_query
+    {
         if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
             continue;
         };
+        let mut pre_mul_delta_time = modifications
+            .all_paths
+            .as_ref()
+            .and_then(|v| modification_query.get(v.0).ok())
+            .unwrap_or_default();
+        for (_, modification) in modifications.per_path.iter().filter(|(p, _)| {
+            path_query
+                .get(p.0)
+                .is_ok_and(|v| *v == MouseSubactionPath::Button)
+        }) {
+            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
+        }
         for button in &binding.buttons {
             let paths = paths
                 .iter()
@@ -80,7 +97,7 @@ pub fn sync_actions(
                 })
                 .map(|(e, _)| *e);
 
-            let delta_mutiplier = match button.premultiply_delta_time {
+            let delta_mutiplier = match pre_mul_delta_time {
                 true => time.delta_seconds(),
                 false => 1.0,
             };
@@ -205,7 +222,6 @@ pub struct MouseButtonBinding {
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
     pub button: MouseButton,
-    pub premultiply_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
 }
 
@@ -215,7 +231,6 @@ impl MouseButtonBinding {
             axis: default(),
             axis_dir: default(),
             button,
-            premultiply_delta_time: default(),
             behavior: default(),
         }
     }
@@ -236,11 +251,6 @@ impl MouseButtonBinding {
 
     pub fn negative_axis_dir(mut self) -> Self {
         self.axis_dir = InputAxisDirection::Negative;
-        self
-    }
-
-    pub fn premultiply_delta_time(mut self) -> Self {
-        self.premultiply_delta_time = true;
         self
     }
 

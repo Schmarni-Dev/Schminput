@@ -6,6 +6,9 @@ use bevy::{
 };
 
 use crate::{
+    binding_modification::{
+        BindingModifiactions, PremultiplyDeltaTimeSecondsModification, UnboundedModification,
+    },
     prelude::RequestedSubactionPaths,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
     ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
@@ -249,6 +252,7 @@ fn sync_actions(
         &GamepadBindings,
         &InActionSet,
         &RequestedSubactionPaths,
+        &BindingModifiactions,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
@@ -260,15 +264,47 @@ fn sync_actions(
         Option<&GamepadPathTarget>,
         Option<&GamepadPathTargetSide>,
     )>,
+    modification_query: Query<(
+        Has<PremultiplyDeltaTimeSecondsModification>,
+        Has<UnboundedModification>,
+    )>,
     time: Res<Time>,
 ) {
-    for (gamepad_bindings, set, sub_paths, mut bool_value, mut float_value, mut vec2_value) in
-        &mut query
+    for (
+        gamepad_bindings,
+        set,
+        sub_paths,
+        modifications,
+        mut bool_value,
+        mut float_value,
+        mut vec2_value,
+    ) in &mut query
     {
         if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
             continue;
         };
+
+        let (pre_mul_delta_time_all, unbounded_all) = modifications
+            .all_paths
+            .as_ref()
+            .and_then(|v| modification_query.get(v.0).ok())
+            .unwrap_or_default();
         for binding in &gamepad_bindings.bindings {
+            let (mut pre_mul_delta_time, mut unbounded) = (pre_mul_delta_time_all, unbounded_all);
+            for (mod_sub_path, modification) in modifications.per_path.iter().copied() {
+                let Ok((_, target, target_side)) = path_query.get(*mod_sub_path) else {
+                    continue;
+                };
+                if let Some(target) = target {
+                    if target.matches(&binding.source, target_side) {
+                        let Ok((pre_mul, unbound)) = modification_query.get(*modification) else {
+                            continue;
+                        };
+                        pre_mul_delta_time |= pre_mul;
+                        unbounded |= unbound;
+                    }
+                }
+            }
             for gamepad in gamepads.iter() {
                 handle_gamepad_inputs(
                     gamepad,
@@ -280,6 +316,8 @@ fn sync_actions(
                     vec2_value.as_deref_mut(),
                     None,
                     &time,
+                    pre_mul_delta_time,
+                    unbounded,
                 );
             }
         }
@@ -288,6 +326,23 @@ fn sync_actions(
                 continue;
             };
             for binding in &gamepad_bindings.bindings {
+                let (mut pre_mul_delta_time, mut unbounded) =
+                    (pre_mul_delta_time_all, unbounded_all);
+                for (mod_sub_path, modification) in modifications.per_path.iter().copied() {
+                    let Ok((_, target, target_side)) = path_query.get(*mod_sub_path) else {
+                        continue;
+                    };
+                    if let Some(target) = target {
+                        if target.matches(&binding.source, target_side) {
+                            let Ok((pre_mul, unbound)) = modification_query.get(*modification)
+                            else {
+                                continue;
+                            };
+                            pre_mul_delta_time |= pre_mul;
+                            unbounded |= unbound;
+                        }
+                    }
+                }
                 if let Some(target) = target {
                     if !target.matches(&binding.source, target_side) {
                         continue;
@@ -306,6 +361,8 @@ fn sync_actions(
                                 vec2_value.as_deref_mut(),
                                 Some(*sub_path),
                                 &time,
+                                pre_mul_delta_time,
+                                unbounded,
                             );
                         }
                     }
@@ -323,6 +380,8 @@ fn sync_actions(
                             vec2_value.as_deref_mut(),
                             Some(*sub_path),
                             &time,
+                            pre_mul_delta_time,
+                            unbounded,
                         );
                     }
                 };
@@ -342,14 +401,16 @@ fn handle_gamepad_inputs(
     mut vec2_value: Option<&mut Vec2ActionValue>,
     path: Option<SubactionPath>,
     time: &Time,
+    pre_mul_delta_time: bool,
+    unbounded: bool,
 ) {
     let mut v = 0.0;
-    let delta_multiplier = match binding.premultiply_delta_time {
+    let delta_multiplier = match pre_mul_delta_time {
         true => time.delta_seconds(),
         false => 1.0,
     };
     if let Some(axis_type) = binding.source.as_axis_type() {
-        let Some(v2) = (match binding.unbounded {
+        let Some(v2) = (match unbounded {
             true => axis.get_unclamped(GamepadAxis::new(gamepad, axis_type)),
             false => axis.get(GamepadAxis::new(gamepad, axis_type)),
         }) else {
@@ -495,8 +556,6 @@ impl GamepadBindings {
 pub struct GamepadBinding {
     pub source: GamepadBindingSource,
     pub button_behavior: ButtonInputBeheavior,
-    pub unbounded: bool,
-    pub premultiply_delta_time: bool,
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
 }
@@ -505,8 +564,6 @@ impl GamepadBinding {
     pub fn new(source: GamepadBindingSource) -> GamepadBinding {
         GamepadBinding {
             source,
-            unbounded: false,
-            premultiply_delta_time: false,
             button_behavior: default(),
             axis: default(),
             axis_dir: default(),
@@ -525,11 +582,6 @@ impl GamepadBinding {
 
     pub fn button_just_released(mut self) -> Self {
         self.button_behavior = ButtonInputBeheavior::JustReleased;
-        self
-    }
-
-    pub fn unbounded(mut self) -> Self {
-        self.unbounded = true;
         self
     }
 

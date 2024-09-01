@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr}, InActionSet, ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
+    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
+    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
+    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 impl Plugin for KeyboardPlugin {
@@ -41,14 +44,23 @@ pub fn sync_actions(
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
+        &BindingModifiactions,
     )>,
     path_query: Query<Has<KeyboardSubactionPath>>,
     set_query: Query<&ActionSetEnabled>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
+    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
-    for (bindings, set, mut bool_value, mut f32_value, mut vec2_value, requested_paths) in
-        &mut action_query
+    for (
+        bindings,
+        set,
+        mut bool_value,
+        mut f32_value,
+        mut vec2_value,
+        requested_paths,
+        modifications,
+    ) in &mut action_query
     {
         if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
             continue;
@@ -58,11 +70,23 @@ pub fn sync_actions(
             .iter()
             .filter(|p| path_query.get(p.0).unwrap_or(false))
             .collect::<Vec<_>>();
+        let mut pre_mul_delta_time = modifications
+            .all_paths
+            .as_ref()
+            .and_then(|v| modification_query.get(v.0).ok())
+            .unwrap_or_default();
+        for (_, modification) in modifications
+            .per_path
+            .iter()
+            .filter(|(p, _)| path_query.get(p.0).unwrap_or(false))
+        {
+            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
+        }
+        let delta_multiplier = match pre_mul_delta_time {
+            true => time.delta_seconds(),
+            false => 1.0,
+        };
         for binding in &bindings.0 {
-            let delta_multiplier = match binding.premultiply_delta_time {
-                true => time.delta_seconds(),
-                false => 1.0,
-            };
             if let Some(button) = bool_value.as_mut() {
                 button.any |= binding.behavior.apply(&input, binding.key);
                 for p in paths.iter() {
@@ -127,7 +151,6 @@ pub struct KeyboardBinding {
     pub key: KeyCode,
     pub axis: InputAxis,
     pub axis_dir: InputAxisDirection,
-    pub premultiply_delta_time: bool,
     pub behavior: ButtonInputBeheavior,
     pub multiplier: f32,
 }
@@ -136,7 +159,6 @@ impl KeyboardBinding {
     pub fn new(key_code: KeyCode) -> KeyboardBinding {
         KeyboardBinding {
             key: key_code,
-            premultiply_delta_time: false,
             multiplier: 1.0,
             axis: default(),
             axis_dir: default(),
@@ -166,11 +188,6 @@ impl KeyboardBinding {
 
     pub fn multiplier(mut self, multiplier: f32) -> Self {
         self.multiplier = multiplier;
-        self
-    }
-
-    pub fn premultiply_delta_time(mut self) -> KeyboardBinding {
-        self.premultiply_delta_time = true;
         self
     }
 
