@@ -36,13 +36,11 @@ fn setup(mut cmds: Commands) {
             .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
         GamepadBindings::default()
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::LeftStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::LeftStickY)
                     .y_axis()
                     .positive(),
@@ -54,13 +52,11 @@ fn setup(mut cmds: Commands) {
         MouseBindings::default().delta_motion(),
         GamepadBindings::default()
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::RightStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::RightStickY)
                     .y_axis()
                     .positive(),
@@ -71,7 +67,6 @@ fn setup(mut cmds: Commands) {
         JumpAction,
         BoolActionValue::default(),
         GamepadBindings::default().add_binding(
-            GamepadBindingDevice::Any,
             GamepadBinding::button(GamepadButtonType::South),
         ),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
@@ -84,7 +79,7 @@ fn setup(mut cmds: Commands) {
     .insert((
         JumpHapticAction,
         GamepadHapticOutput::default(),
-        GamepadHapticOutputBindings::default().weak(GamepadBindingDevice::Any),
+        GamepadHapticOutputBindings::default().weak(),
     ));
     cmds.spawn(Camera3dBundle::default());
 }

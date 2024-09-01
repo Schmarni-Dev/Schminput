@@ -8,7 +8,7 @@ use bevy::{
     prelude::*,
 };
 use schminput::{
-    gamepad::{GamepadBinding, GamepadBindingDevice, GamepadBindingSource, GamepadBindings},
+    gamepad::{GamepadBinding, GamepadBindingSource, GamepadBindings},
     keyboard::KeyboardBindings,
     mouse::{MouseBindings, MouseButtonBinding, MouseMotionBinding},
 };
@@ -157,10 +157,7 @@ fn handle_gamepad_request(
             let Ok(mut v) = action_query.get_mut(action) else {
                 return;
             };
-            v.bindings
-                .get_mut(&GamepadBindingDevice::Any)
-                .unwrap()
-                .remove(binding_index);
+            v.bindings.remove(binding_index);
         }
         Some(RequestGamepadRebinding::NewBinding { action }) => {
             cmds.insert_resource(PendingGamepadRebinding::New { action });
@@ -191,12 +188,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid action entity");
                     return;
                 };
-                let Some(binding) = bindings
-                    .bindings
-                    .get_mut(&GamepadBindingDevice::Any)
-                    .unwrap()
-                    .get_mut(binding_index)
-                else {
+                let Some(binding) = bindings.bindings.get_mut(binding_index) else {
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
@@ -210,15 +202,12 @@ fn handle_gamepad_rebinding(
                 match bindings {
                     Some(mut bindings) => bindings
                         .bindings
-                        .get_mut(&GamepadBindingDevice::Any)
-                        .unwrap()
                         .push(GamepadBinding::button(input.button.button_type)),
                     None => {
-                        cmds.entity(action)
-                            .insert(GamepadBindings::default().add_binding(
-                                GamepadBindingDevice::Any,
-                                GamepadBinding::button(input.button.button_type),
-                            ));
+                        cmds.entity(action).insert(
+                            GamepadBindings::default()
+                                .add_binding(GamepadBinding::button(input.button.button_type)),
+                        );
                     }
                 }
             }
@@ -240,12 +229,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid action entity");
                     return;
                 };
-                let Some(binding) = bindings
-                    .bindings
-                    .get_mut(&GamepadBindingDevice::Any)
-                    .unwrap()
-                    .get_mut(binding_index)
-                else {
+                let Some(binding) = bindings.bindings.get_mut(binding_index) else {
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
@@ -257,15 +241,10 @@ fn handle_gamepad_rebinding(
                     return;
                 };
                 match bindings {
-                    Some(mut bindings) => bindings
-                        .bindings
-                        .get_mut(&GamepadBindingDevice::Any)
-                        .unwrap()
-                        .push(GamepadBinding::axis(input.axis_type)),
+                    Some(mut bindings) => bindings.bindings.push(GamepadBinding::axis(input.axis_type)),
                     None => {
                         cmds.entity(action)
                             .insert(GamepadBindings::default().add_binding(
-                                GamepadBindingDevice::Any,
                                 GamepadBinding::axis(input.axis_type),
                             ));
                     }
@@ -403,7 +382,7 @@ fn handle_keyboard_request(
             action,
         }) => {
             let Ok(mut v) = action_query.get_mut(action) else {
-                return
+                return;
             };
             v.0.remove(binding_index);
         }

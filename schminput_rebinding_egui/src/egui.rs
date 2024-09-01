@@ -185,10 +185,8 @@ pub fn draw_rebinding_ui(
                                 },
                                 |ui| {
                                     if let Some(mut gamepad) = gamepad {
-                                        for (binding_index, binding) in gamepad
-                                            .bindings
-                                            .iter_mut()
-                                            .flat_map(|v| v.1.iter_mut().enumerate())
+                                        for (binding_index, binding) in
+                                            gamepad.bindings.iter_mut().enumerate()
                                         {
                                             draw_gamepad_binding(
                                                 ui,

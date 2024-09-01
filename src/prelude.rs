@@ -1,5 +1,5 @@
 pub use crate::gamepad::{
-    GamepadBinding, GamepadBindingDevice, GamepadBindings, GamepadHapticOutput,
+    GamepadBinding, GamepadPathSelector, GamepadBindings, GamepadHapticOutput,
     GamepadHapticOutputBindings,
 };
 pub use crate::keyboard::{KeyboardBinding, KeyboardBindings};

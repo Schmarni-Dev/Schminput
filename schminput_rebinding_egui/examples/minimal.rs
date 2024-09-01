@@ -5,7 +5,8 @@ use schminput_rebinding_egui::{
     default_bindings::{RebindingDefaultBindingsPlugin, ResetToDefautlBindings},
     egui::ActionStateQuery,
     runtime_rebinding::{
-        RequestGamepadRebinding, RequestKeyboardRebinding, RequestMouseRebinding, RuntimeRebindingPlugin, WaitingForInput
+        RequestGamepadRebinding, RequestKeyboardRebinding, RequestMouseRebinding,
+        RuntimeRebindingPlugin, WaitingForInput,
     },
 };
 fn main() {
@@ -33,13 +34,11 @@ fn setup(mut cmds: Commands) {
             .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
         GamepadBindings::default()
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::LeftStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::LeftStickY)
                     .y_axis()
                     .positive(),
@@ -50,13 +49,11 @@ fn setup(mut cmds: Commands) {
         MouseBindings::default().delta_motion(),
         GamepadBindings::default()
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::RightStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBindingDevice::Any,
                 GamepadBinding::axis(GamepadAxisType::RightStickY)
                     .y_axis()
                     .positive(),
@@ -64,13 +61,9 @@ fn setup(mut cmds: Commands) {
     ));
     cmds.spawn(ActionBundle::new("jump", "Jump", set)).insert((
         BoolActionValue::default(),
-        GamepadBindings::default().add_binding(
-            GamepadBindingDevice::Any,
-            GamepadBinding::button(GamepadButtonType::South),
-        ).add_binding(
-            GamepadBindingDevice::Any,
-            GamepadBinding::button(GamepadButtonType::Other(128)),
-        ),
+        GamepadBindings::default()
+            .add_binding(GamepadBinding::button(GamepadButtonType::South))
+            .add_binding(GamepadBinding::button(GamepadButtonType::Other(128))),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space).just_pressed()),
     ));
     cmds.spawn(ActionBundle::new(
@@ -80,9 +73,8 @@ fn setup(mut cmds: Commands) {
     ))
     .insert((
         GamepadHapticOutput::default(),
-        GamepadHapticOutputBindings::default().weak(GamepadBindingDevice::Any),
+        GamepadHapticOutputBindings::default().weak(),
     ));
-    // should not be needed? but something hates me, official bevy_egui simple example is also broken
     cmds.spawn(Camera3dBundle { ..default() });
 }
 
@@ -102,7 +94,7 @@ fn draw_ui(
     action_type_query: ActionStateQuery,
     reset_bindings: EventWriter<ResetToDefautlBindings>,
     mouse_rebind: EventWriter<RequestMouseRebinding>,
-     gamepad_rebind: EventWriter<RequestGamepadRebinding>,
+    gamepad_rebind: EventWriter<RequestGamepadRebinding>,
 ) {
     egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
         // ui.label("hello wowld");
