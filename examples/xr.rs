@@ -1,10 +1,5 @@
 use bevy::{color::palettes::css, diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
-use schminput::{
-    gamepad::{GamepadBinding, GamepadBindings},
-    openxr::{AttachSpaceToEntity, OxrActionBlueprint, SpaceActionValue, OCULUS_TOUCH_PROFILE},
-    prelude::*,
-    ActionBundle, ActionSetBundle,
-};
+use schminput::prelude::*;
 #[derive(Component, Clone, Copy)]
 struct HandLeft;
 #[derive(Component, Clone, Copy)]
@@ -58,7 +53,7 @@ fn setup(mut cmds: Commands) {
                 .end(),
             KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)),
             GamepadBindings::default().add_binding(
-                GamepadBinding::button(GamepadButtonType::South).button_just_pressed(),
+                GamepadBinding::new(GamepadBindingSource::South).button_just_pressed(),
             ),
             BoolActionValue::default(),
         ));

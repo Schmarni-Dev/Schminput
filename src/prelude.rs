@@ -1,12 +1,13 @@
 pub use crate::gamepad::{
-    GamepadBinding, GamepadPathSelector, GamepadBindings, GamepadHapticOutput,
-    GamepadHapticOutputBindings,
+    GamepadBinding, GamepadBindingSource, GamepadBindings, GamepadHapticOutput,
+    GamepadHapticOutputBindings, GamepadPathSelector,
 };
 pub use crate::keyboard::{KeyboardBinding, KeyboardBindings};
 pub use crate::mouse::{MouseBindings, MouseButtonBinding, MouseMotionBinding, MouseMotionType};
 #[cfg(feature = "xr")]
 pub use crate::openxr::{
-    OxrActionBlueprint, META_TOUCH_PLUS_PROFILE, META_TOUCH_PRO_PROFILE, OCULUS_TOUCH_PROFILE,
+    AttachSpaceToEntity, OxrActionBlueprint, SpaceActionValue, META_TOUCH_PLUS_PROFILE,
+    META_TOUCH_PRO_PROFILE, OCULUS_TOUCH_PROFILE,
 };
 pub use crate::subaction_paths::{RequestedSubactionPaths, SubactionPaths};
 pub use crate::DefaultSchminputPlugins;

@@ -253,13 +253,7 @@ pub fn draw_gamepad_binding(
             draw_input_axis(ui, &mut binding.axis, binding_index, action);
             draw_input_axis_dir(ui, &mut binding.axis_dir, binding_index, action);
         }
-        let show_behavior = match &binding.source {
-            schminput::gamepad::GamepadBindingSource::Axis(_) => false,
-            schminput::gamepad::GamepadBindingSource::Button(_) => true,
-        };
-
-        if show_behavior {
-            // Will not pull out
+        if binding.source.as_button_type().is_some() {
             draw_button_behavior(ui, &mut binding.button_behavior, binding_index, action)
         }
     });

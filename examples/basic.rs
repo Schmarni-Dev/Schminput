@@ -36,12 +36,12 @@ fn setup(mut cmds: Commands) {
             .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
         GamepadBindings::default()
             .add_binding(
-                GamepadBinding::axis(GamepadAxisType::LeftStickX)
+                GamepadBinding::new(GamepadBindingSource::LeftStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBinding::axis(GamepadAxisType::LeftStickY)
+                GamepadBinding::new(GamepadBindingSource::LeftStickY)
                     .y_axis()
                     .positive(),
             ),
@@ -52,12 +52,12 @@ fn setup(mut cmds: Commands) {
         MouseBindings::default().delta_motion(),
         GamepadBindings::default()
             .add_binding(
-                GamepadBinding::axis(GamepadAxisType::RightStickX)
+                GamepadBinding::new(GamepadBindingSource::RightStickX)
                     .x_axis()
                     .positive(),
             )
             .add_binding(
-                GamepadBinding::axis(GamepadAxisType::RightStickY)
+                GamepadBinding::new(GamepadBindingSource::RightStickY)
                     .y_axis()
                     .positive(),
             ),
@@ -67,7 +67,7 @@ fn setup(mut cmds: Commands) {
         JumpAction,
         BoolActionValue::default(),
         GamepadBindings::default().add_binding(
-            GamepadBinding::button(GamepadButtonType::South),
+            GamepadBinding::new(GamepadBindingSource::South),
         ),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
     ));
