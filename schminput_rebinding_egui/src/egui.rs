@@ -4,8 +4,8 @@ use bevy_egui::egui::{
     Ui,
 };
 use schminput::{
-    prelude::*, ActionsInSet, ButtonInputBeheavior, InputAxis, InputAxisDirection,
-    LocalizedActionSetName,
+    gamepad::GamepadHapticType, prelude::*, ActionsInSet, ButtonInputBeheavior, InputAxis,
+    InputAxisDirection, LocalizedActionSetName,
 };
 
 use crate::{
@@ -49,17 +49,24 @@ mod macros {
     }
     pub(crate) use collapsable;
 }
+/// Used when `xr` feature is not enabled, can be ignored
+#[derive(Component)]
+pub struct PlaceholderComponent;
+
+pub type ActionQueryData<'a> = (
+    Entity,
+    Option<&'a mut KeyboardBindings>,
+    Option<&'a mut MouseBindings>,
+    Option<&'a mut GamepadBindings>,
+    Option<&'a mut GamepadHapticOutputBindings>,
+    Option<&'a mut PlaceholderComponent>,
+    &'a LocalizedActionName,
+    Has<BoolActionValue>,
+);
 
 pub fn draw_rebinding_ui(
     ui: &mut Ui,
-    action_query: &mut Query<(
-        Entity,
-        Option<&mut KeyboardBindings>,
-        Option<&mut MouseBindings>,
-        Option<&mut GamepadBindings>,
-        &LocalizedActionName,
-        Has<BoolActionValue>,
-    )>,
+    action_query: &mut Query<ActionQueryData>,
     action_type_query: &ActionStateQuery,
     set_query: &Query<(&LocalizedActionSetName, &ActionsInSet)>,
     waiting: &WaitingForInput,
@@ -85,6 +92,8 @@ pub fn draw_rebinding_ui(
                     keyboard,
                     mut mouse,
                     gamepad,
+                    gamepad_haptics,
+                    xr_blueprint,
                     localized_name,
                     is_bool_action,
                 )) = iter.fetch_next()
@@ -200,6 +209,63 @@ pub fn draw_rebinding_ui(
                                     }
                                 }
                             );
+                        }
+                        if action_type == ActionType::GamepadHaptic {
+                            if let Some(mut gamepad_haptics) = gamepad_haptics {
+                                collapsable!(
+                                    ui,
+                                    entity,
+                                    "Gamepad Haptics:",
+                                    {
+                                        gamepad_haptics.bindings.push(GamepadHapticType::Weak);
+                                    },
+                                    |ui| {
+                                        let mut delete = None;
+                                        for (binding_index, binding) in
+                                            gamepad_haptics.bindings.iter_mut().enumerate()
+                                        {
+                                            ui.horizontal(|ui| {
+                                                egui::ComboBox::new(
+                                                    BindingIdHash {
+                                                        binding_index,
+                                                        action: entity,
+                                                        id: "gamepad_haptics",
+                                                    },
+                                                    "Haptics Type",
+                                                )
+                                                .width(0.0)
+                                                .selected_text(
+                                                    RichText::new(binding.to_string()).monospace(),
+                                                )
+                                                .show_ui(ui, |ui| {
+                                                    ui.selectable_value(
+                                                        binding,
+                                                        GamepadHapticType::Weak,
+                                                        RichText::new(
+                                                            GamepadHapticType::Weak.to_string(),
+                                                        )
+                                                        .monospace(),
+                                                    );
+                                                    ui.selectable_value(
+                                                        binding,
+                                                        GamepadHapticType::Strong,
+                                                        RichText::new(
+                                                            GamepadHapticType::Strong.to_string(),
+                                                        )
+                                                        .monospace(),
+                                                    );
+                                                });
+                                                if ui.button(get_delete_text()).clicked() {
+                                                    delete = Some(binding_index);
+                                                }
+                                            });
+                                        }
+                                        if let Some(index) = delete {
+                                            gamepad_haptics.bindings.remove(index);
+                                        }
+                                    }
+                                );
+                            }
                         }
                     })
                     .header_response
@@ -388,7 +454,7 @@ fn draw_button_behavior(
             action,
             id: "behavior",
         },
-        "direction",
+        "behavior",
     )
     .width(0.0)
     .selected_text(RichText::new(b.to_string()).monospace())

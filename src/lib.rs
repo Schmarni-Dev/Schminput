@@ -25,6 +25,8 @@ pub struct SchminputPlugin;
 
 impl Plugin for SchminputPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<InputAxis>();
+        app.register_type::<InputAxisDirection>();
         app.configure_sets(
             PreUpdate,
             (

@@ -465,6 +465,15 @@ pub enum GamepadHapticType {
     Strong,
 }
 
+impl std::fmt::Display for GamepadHapticType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            GamepadHapticType::Weak => "Weak",
+            GamepadHapticType::Strong => "Strong",
+        })
+    }
+}
+
 impl GamepadHapticType {
     pub fn as_rumble_intensity(&self, intensity: f32) -> GamepadRumbleIntensity {
         match self {

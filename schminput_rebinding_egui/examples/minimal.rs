@@ -1,24 +1,16 @@
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts, EguiPlugin};
+use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
-use schminput_rebinding_egui::{
-    default_bindings::{RebindingDefaultBindingsPlugin, ResetToDefautlBindings},
-    egui::ActionStateQuery,
-    runtime_rebinding::{
-        RequestGamepadRebinding, RequestKeyboardRebinding, RequestMouseRebinding,
-        RuntimeRebindingPlugin, WaitingForInput,
-    },
-};
+use schminput_rebinding_egui::{egui_window::ShowEguiRebindingWindow, DefaultSchminputRebindingPlugins};
 fn main() {
     let mut app = App::new();
+    app.insert_resource(ShowEguiRebindingWindow(true));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
     app.add_plugins(EguiPlugin);
-    app.add_plugins(RuntimeRebindingPlugin);
-    app.add_plugins(RebindingDefaultBindingsPlugin);
+    app.add_plugins(DefaultSchminputRebindingPlugins);
 
     app.add_systems(Startup, setup);
-    app.add_systems(Update, draw_ui);
     app.run();
 }
 fn setup(mut cmds: Commands) {
@@ -65,6 +57,7 @@ fn setup(mut cmds: Commands) {
             .add_binding(GamepadBinding::new(GamepadBindingSource::South))
             .add_binding(GamepadBinding::new(GamepadBindingSource::OtherButton(128))),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space).just_pressed()),
+        MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left))
     ));
     cmds.spawn(ActionBundle::new(
         "jump_haptic",
@@ -76,38 +69,4 @@ fn setup(mut cmds: Commands) {
         GamepadHapticOutputBindings::default().weak(),
     ));
     cmds.spawn(Camera3dBundle { ..default() });
-}
-
-fn draw_ui(
-    mut ctxs: EguiContexts,
-    mut action_query: Query<(
-        Entity,
-        Option<&mut KeyboardBindings>,
-        Option<&mut MouseBindings>,
-        Option<&mut GamepadBindings>,
-        &LocalizedActionName,
-        Has<BoolActionValue>,
-    )>,
-    set_query: Query<(&LocalizedActionSetName, &ActionsInSet)>,
-    waiting: Res<WaitingForInput>,
-    request_keyboard: EventWriter<RequestKeyboardRebinding>,
-    action_type_query: ActionStateQuery,
-    reset_bindings: EventWriter<ResetToDefautlBindings>,
-    mouse_rebind: EventWriter<RequestMouseRebinding>,
-    gamepad_rebind: EventWriter<RequestGamepadRebinding>,
-) {
-    egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
-        // ui.label("hello wowld");
-        schminput_rebinding_egui::egui::draw_rebinding_ui(
-            ui,
-            &mut action_query,
-            &action_type_query,
-            &set_query,
-            &waiting,
-            request_keyboard,
-            mouse_rebind,
-            gamepad_rebind,
-            reset_bindings,
-        );
-    });
 }
