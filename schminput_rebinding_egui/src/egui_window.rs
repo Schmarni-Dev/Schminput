@@ -3,6 +3,7 @@ use bevy_egui::{egui, EguiContexts};
 use schminput::prelude::*;
 
 use crate::{
+    config::{LoadSchminputConfig, SaveSchminputConfig},
     default_bindings::ResetToDefautlBindings,
     egui::{ActionQueryData, ActionStateQuery},
     runtime_rebinding::{
@@ -34,6 +35,8 @@ fn draw_ui(
     reset_bindings: EventWriter<ResetToDefautlBindings>,
     mouse_rebind: EventWriter<RequestMouseRebinding>,
     gamepad_rebind: EventWriter<RequestGamepadRebinding>,
+    request_save: EventWriter<SaveSchminputConfig>,
+    request_load: EventWriter<LoadSchminputConfig>,
 ) {
     egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
         crate::egui::draw_rebinding_ui(
@@ -46,6 +49,8 @@ fn draw_ui(
             mouse_rebind,
             gamepad_rebind,
             reset_bindings,
+            request_save,
+            request_load,
         );
     });
 }

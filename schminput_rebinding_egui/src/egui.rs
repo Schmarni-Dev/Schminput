@@ -9,6 +9,7 @@ use schminput::{
 };
 
 use crate::{
+    config::{LoadSchminputConfig, SaveSchminputConfig},
     default_bindings::ResetToDefautlBindings,
     egui::macros::collapsable,
     runtime_rebinding::{
@@ -74,15 +75,14 @@ pub fn draw_rebinding_ui(
     mut mouse_rebind: EventWriter<RequestMouseRebinding>,
     mut gamepad_rebind: EventWriter<RequestGamepadRebinding>,
     mut reset_bindings: EventWriter<ResetToDefautlBindings>,
+    mut request_save: EventWriter<SaveSchminputConfig>,
+    mut request_load: EventWriter<LoadSchminputConfig>,
 ) {
     if waiting.waiting() {
         ui.heading("Waiting for input");
         return;
     }
     for (localized_set_name, actions) in set_query.iter() {
-        // idk what i am even derefing too
-        // ui.label(&***localized_set_name);
-
         CollapsingHeader::new(&***localized_set_name)
             .default_open(true)
             .show(ui, |ui| {
@@ -101,7 +101,6 @@ pub fn draw_rebinding_ui(
                     let action_type = ActionType::from_query(action_type_query, entity);
                     // idk what i am even derefing too
                     ui.collapsing(&***localized_name, |ui| {
-                        // Keyboard
                         if action_type != ActionType::GamepadHaptic {
                             collapsable!(
                                 ui,
@@ -275,6 +274,12 @@ pub fn draw_rebinding_ui(
     }
     if ui.button("Reset All Bindings").clicked() {
         reset_bindings.send(ResetToDefautlBindings::All);
+    }
+    if ui.button("Save All Bindings").clicked() {
+        request_save.send_default();
+    }
+    if ui.button("Load All Bindings").clicked() {
+        request_load.send_default();
     }
 }
 

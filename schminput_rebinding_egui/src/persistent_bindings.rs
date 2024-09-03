@@ -9,11 +9,32 @@ use crate::str_converstions::{
     str_to_input_axis, str_to_input_axis_dir, str_to_key_code, str_to_mouse_button,
 };
 
+#[derive(SystemSet, Hash, Debug, PartialEq, Eq, Clone, Copy)]
+pub enum PersistentBindingsSet {
+    Serialize,
+    Deserialize,
+}
+
 pub struct PersistentBindingsPlugin;
 
 impl Plugin for PersistentBindingsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostStartup, (serialize_v1, deserialize_v1).chain());
+        app.add_event::<DeserializeSchminputConfig>();
+        app.add_event::<SerializeSchminputConfig>();
+        app.add_event::<FinnishedSchminputConfigSerialization>();
+        app.add_event::<FinnishedSchminputConfigDeserialization>();
+        app.add_systems(
+            PostUpdate,
+            serialize_v1
+                .run_if(on_event::<SerializeSchminputConfig>())
+                .in_set(PersistentBindingsSet::Serialize),
+        );
+        app.add_systems(
+            PostUpdate,
+            deserialize_v1
+                .run_if(on_event::<DeserializeSchminputConfig>())
+                .in_set(PersistentBindingsSet::Deserialize),
+        );
     }
 }
 
@@ -23,10 +44,25 @@ fn implicit_table() -> toml_edit::Item {
     toml_edit::Item::Table(w)
 }
 
-#[derive(Resource)]
-struct ConfigDocument(DocumentMut);
+#[derive(Event, Clone)]
+pub struct DeserializeSchminputConfig {
+    pub config: String,
+}
+#[derive(Event, Clone)]
+pub struct FinnishedSchminputConfigDeserialization;
+
+#[derive(Event, Clone)]
+pub struct SerializeSchminputConfig {
+    pub base_config: String,
+}
+#[derive(Event, Clone)]
+pub struct FinnishedSchminputConfigSerialization {
+    pub output: String,
+}
 
 fn serialize_v1(
+    mut request: EventReader<SerializeSchminputConfig>,
+    mut respone: EventWriter<FinnishedSchminputConfigSerialization>,
     mut action_query: Query<(
         Option<&KeyboardBindings>,
         Option<&MouseBindings>,
@@ -35,52 +71,33 @@ fn serialize_v1(
         &ActionName,
     )>,
     set_query: Query<(&ActionSetName, &ActionsInSet)>,
-    mut cmds: Commands,
 ) {
-    let mut owned_doc = toml_edit::DocumentMut::new();
-    let doc = &mut owned_doc;
-    doc.entry("version").or_insert(toml_edit::value(1i64));
-    for (set_name, actions) in &set_query {
-        let mut iter = action_query.iter_many_mut(actions.0.iter());
-        while let Some((keyboard, mouse, gamepad, gamepad_haptics, name)) = iter.fetch_next() {
-            let doc_bindings = doc
-                .entry(&set_name.0)
-                .or_insert(implicit_table())
-                .as_table_mut()
-                .unwrap()
-                .entry(&name.0)
-                .or_insert(toml_edit::table());
-            if let Some(keyboard) = keyboard {
-                let mut bindings_list = toml_edit::Array::new();
-                for binding in keyboard.0.iter() {
-                    let mut table = toml_edit::InlineTable::new();
-                    table.insert("key", key_code_to_str(&binding.key).into());
-                    table.insert("multiplier", (binding.multiplier as f64).into());
-                    table.insert("axis_dir", input_axis_dir_to_str(binding.axis_dir).into());
-                    table.insert("axis", input_axis_to_str(binding.axis).into());
-                    table.insert(
-                        "button_behavior",
-                        button_behavior_to_str(binding.behavior).into(),
-                    );
-                    bindings_list.push(table);
-                }
-                bindings_list.fmt();
-                doc_bindings["keyboard"] = toml_edit::value(bindings_list);
+    for request in request.read() {
+        let mut owned_doc = match request.base_config.parse::<DocumentMut>() {
+            Ok(v) => v,
+            Err(err) => {
+                error!("unable to parse base config toml: {}", err);
+                continue;
             }
-            if let Some(mouse) = mouse {
-                if let Some(motion) = mouse.movement {
-                    let mut table = toml_edit::InlineTable::new();
-                    table.insert("sensitivity", (motion.multiplier as f64).into());
-                    doc_bindings
-                        .as_table_mut()
-                        .unwrap()
-                        .insert("mouse_movement", value(table));
-                }
-                if !mouse.buttons.is_empty() {
+        };
+        let doc = &mut owned_doc;
+        doc.entry("version").or_insert(toml_edit::value(1i64));
+        for (set_name, actions) in &set_query {
+            let mut iter = action_query.iter_many_mut(actions.0.iter());
+            while let Some((keyboard, mouse, gamepad, gamepad_haptics, name)) = iter.fetch_next() {
+                let doc_bindings = doc
+                    .entry(&set_name.0)
+                    .or_insert(implicit_table())
+                    .as_table_mut()
+                    .unwrap()
+                    .entry(&name.0)
+                    .or_insert(toml_edit::table());
+                if let Some(keyboard) = keyboard {
                     let mut bindings_list = toml_edit::Array::new();
-                    for binding in mouse.buttons.iter() {
+                    for binding in keyboard.0.iter() {
                         let mut table = toml_edit::InlineTable::new();
-                        table.insert("button", (&*mouse_button_to_cow_str(binding.button)).into());
+                        table.insert("key", key_code_to_str(&binding.key).into());
+                        table.insert("multiplier", (binding.multiplier as f64).into());
                         table.insert("axis_dir", input_axis_dir_to_str(binding.axis_dir).into());
                         table.insert("axis", input_axis_to_str(binding.axis).into());
                         table.insert(
@@ -90,195 +107,150 @@ fn serialize_v1(
                         bindings_list.push(table);
                     }
                     bindings_list.fmt();
-                    doc_bindings["mouse_button"] = toml_edit::value(bindings_list);
+                    doc_bindings["keyboard"] = toml_edit::value(bindings_list);
                 }
-            }
-            if let Some(gamepad) = gamepad {
-                let mut bindings_list = toml_edit::Array::new();
-                for binding in gamepad.bindings.iter() {
-                    let mut table = toml_edit::InlineTable::new();
-                    table.insert(
-                        "key",
-                        (&*gamepad_binding_source_to_cow_str(binding.source)).into(),
-                    );
-                    table.insert("axis_dir", input_axis_dir_to_str(binding.axis_dir).into());
-                    table.insert("axis", input_axis_to_str(binding.axis).into());
-                    table.insert(
-                        "button_behavior",
-                        button_behavior_to_str(binding.button_behavior).into(),
-                    );
-                    bindings_list.push(table);
+                if let Some(mouse) = mouse {
+                    if let Some(motion) = mouse.movement {
+                        let mut table = toml_edit::InlineTable::new();
+                        table.insert("sensitivity", (motion.multiplier as f64).into());
+                        doc_bindings
+                            .as_table_mut()
+                            .unwrap()
+                            .insert("mouse_movement", value(table));
+                    }
+                    if !mouse.buttons.is_empty() {
+                        let mut bindings_list = toml_edit::Array::new();
+                        for binding in mouse.buttons.iter() {
+                            let mut table = toml_edit::InlineTable::new();
+                            table.insert(
+                                "button",
+                                (&*mouse_button_to_cow_str(binding.button)).into(),
+                            );
+                            table
+                                .insert("axis_dir", input_axis_dir_to_str(binding.axis_dir).into());
+                            table.insert("axis", input_axis_to_str(binding.axis).into());
+                            table.insert(
+                                "button_behavior",
+                                button_behavior_to_str(binding.behavior).into(),
+                            );
+                            bindings_list.push(table);
+                        }
+                        bindings_list.fmt();
+                        doc_bindings["mouse_button"] = toml_edit::value(bindings_list);
+                    }
                 }
-                bindings_list.fmt();
-                doc_bindings["gamepad"] = toml_edit::value(bindings_list);
-            }
-            if let Some(gamepad_haptics) = gamepad_haptics {
-                let mut bindings_list = toml_edit::Array::new();
-                for binding in gamepad_haptics.bindings.iter() {
-                    let mut table = toml_edit::InlineTable::new();
-                    table.insert("haptic_type", gamepad_haptics_type_to_str(*binding).into());
-                    bindings_list.push(table);
+                if let Some(gamepad) = gamepad {
+                    let mut bindings_list = toml_edit::Array::new();
+                    for binding in gamepad.bindings.iter() {
+                        let mut table = toml_edit::InlineTable::new();
+                        table.insert(
+                            "key",
+                            (&*gamepad_binding_source_to_cow_str(binding.source)).into(),
+                        );
+                        table.insert("axis_dir", input_axis_dir_to_str(binding.axis_dir).into());
+                        table.insert("axis", input_axis_to_str(binding.axis).into());
+                        table.insert(
+                            "button_behavior",
+                            button_behavior_to_str(binding.button_behavior).into(),
+                        );
+                        bindings_list.push(table);
+                    }
+                    bindings_list.fmt();
+                    doc_bindings["gamepad"] = toml_edit::value(bindings_list);
                 }
-                bindings_list.fmt();
-                doc_bindings["gamepad_haptics"] = toml_edit::value(bindings_list);
+                if let Some(gamepad_haptics) = gamepad_haptics {
+                    let mut bindings_list = toml_edit::Array::new();
+                    for binding in gamepad_haptics.bindings.iter() {
+                        let mut table = toml_edit::InlineTable::new();
+                        table.insert("haptic_type", gamepad_haptics_type_to_str(*binding).into());
+                        bindings_list.push(table);
+                    }
+                    bindings_list.fmt();
+                    doc_bindings["gamepad_haptics"] = toml_edit::value(bindings_list);
+                }
             }
         }
+        respone.send(FinnishedSchminputConfigSerialization {
+            output: owned_doc.to_string(),
+        });
     }
-    info!("\n{}", owned_doc.to_string());
-    cmds.insert_resource(ConfigDocument(owned_doc));
 }
 
 fn deserialize_v1(
-    doc: Res<ConfigDocument>,
+    mut request: EventReader<DeserializeSchminputConfig>,
+    mut respone: EventWriter<FinnishedSchminputConfigDeserialization>,
     mut action_query: Query<(Entity, &ActionName)>,
     set_query: Query<(&ActionSetName, &ActionsInSet)>,
     mut cmds: Commands,
 ) {
-    match doc.0.get("version") {
-        // WHY?!
-        Some(toml_edit::Item::Value(toml_edit::Value::Integer(i))) if *i.value() == 1 => {}
-        v => {
-            error!("invalid version in config file, not loading: {:?}", v);
-            return;
+    for request in request.read() {
+        let doc = match request.config.parse::<DocumentMut>() {
+            Ok(v) => v,
+            Err(err) => {
+                error!("unable to parse base config toml: {}", err);
+                continue;
+            }
+        };
+        match doc.get("version") {
+            // WHY?!
+            Some(toml_edit::Item::Value(toml_edit::Value::Integer(i))) if *i.value() == 1 => {}
+            v => {
+                error!("invalid version in config file, not loading: {:?}", v);
+                return;
+            }
         }
-    }
-    for (name, item) in doc.0.iter() {
-        if name == "version" {
-            continue;
-        }
+        for (name, item) in doc.iter() {
+            if name == "version" {
+                continue;
+            }
 
-        let Some((_set_name, actions)) = set_query.iter().find(|(set_name, _)| set_name.0 == name)
-        else {
-            error!("unable to find actionset with name: {}", name);
-            continue;
-        };
-        let Some(table) = item.as_table() else {
-            error!("action set {} not a table", name);
-            continue;
-        };
-        for (action_name, action_bindings) in table.iter() {
-            let Some(bindings) = action_bindings.as_table() else {
-                error!("action {} not a table", action_name);
-                continue;
-            };
-            let Some(action_entity) = action_query
-                .iter_many_mut(actions.0.iter())
-                .find(|(_, n)| n.0 == action_name)
-                .map(|(e, _)| e)
+            let Some((_set_name, actions)) =
+                set_query.iter().find(|(set_name, _)| set_name.0 == name)
             else {
-                error!("unable to find action with name: {}", action_name);
+                error!("unable to find actionset with name: {}", name);
                 continue;
             };
-            let mut keyboard_bindings = KeyboardBindings::default();
-            let mut mouse_bindings = MouseBindings::default();
-            let mut gamepad_bindings = GamepadBindings::default();
-            let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
-            'keyboard: {
-                if let Some(keyboard) = bindings.get("keyboard") {
-                    let Some(keyboard) = keyboard.as_array() else {
-                        error!("keyboard field on {name}.{action_name} is not an array");
-                        break 'keyboard;
-                    };
-                    for binding_table in keyboard.iter() {
-                        let Some(binding_table) = binding_table.as_inline_table() else {
-                            error!("keyboard binding array doesn't contain inline tables");
-                            continue;
+            let Some(table) = item.as_table() else {
+                error!("action set {} not a table", name);
+                continue;
+            };
+            for (action_name, action_bindings) in table.iter() {
+                let Some(bindings) = action_bindings.as_table() else {
+                    error!("action {} not a table", action_name);
+                    continue;
+                };
+                let Some(action_entity) = action_query
+                    .iter_many_mut(actions.0.iter())
+                    .find(|(_, n)| n.0 == action_name)
+                    .map(|(e, _)| e)
+                else {
+                    error!("unable to find action with name: {}", action_name);
+                    continue;
+                };
+                let mut keyboard_bindings = KeyboardBindings::default();
+                let mut mouse_bindings = MouseBindings::default();
+                let mut gamepad_bindings = GamepadBindings::default();
+                let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
+                'keyboard: {
+                    if let Some(keyboard) = bindings.get("keyboard") {
+                        let Some(keyboard) = keyboard.as_array() else {
+                            error!("keyboard field on {name}.{action_name} is not an array");
+                            break 'keyboard;
                         };
-                        let key = {
-                            let Some(val) = str_from_table(binding_table, "key") else {
-                                error!("cannot get string for {name}.{action_name}.keyboard.key");
-                                continue;
-                            };
-                            let Some(w) = str_to_key_code(val) else {
-                                error!("unable to parse {val} as keycode");
-                                continue;
-                            };
-                            w
-                        };
-                        let axis_dir = {
-                            let Some(val) = str_from_table(binding_table, "axis_dir") else {
-                                error!(
-                                    "cannot get string for {name}.{action_name}.keyboard.axis_dir"
-                                );
-                                continue;
-                            };
-                            let Some(w) = str_to_input_axis_dir(val) else {
-                                error!("unable to parse {val} as axis direction");
-                                continue;
-                            };
-                            w
-                        };
-                        let axis = {
-                            let Some(val) = str_from_table(binding_table, "axis") else {
-                                error!("cannot get string for {name}.{action_name}.keyboard.axis");
-                                continue;
-                            };
-                            let Some(w) = str_to_input_axis(val) else {
-                                error!("unable to parse {val} as axis");
-                                continue;
-                            };
-                            w
-                        };
-                        let behavior = {
-                            let Some(val) = str_from_table(binding_table, "button_behavior") else {
-                                error!("cannot get string for {name}.{action_name}.keyboard.button_behavior");
-                                continue;
-                            };
-                            let Some(w) = str_to_button_behavior(val) else {
-                                error!("unable to parse {val} as button behavior");
-                                continue;
-                            };
-                            w
-                        };
-                        let Some(multiplier) = f32_from_table(binding_table, "multiplier") else {
-                            error!(
-                                "cannot get number for {name}.{action_name}.keyboard.multiplier"
-                            );
-                            continue;
-                        };
-                        keyboard_bindings = keyboard_bindings.add_binding(KeyboardBinding {
-                            key,
-                            axis,
-                            axis_dir,
-                            behavior,
-                            multiplier,
-                        });
-                    }
-                }
-                'mouse: {
-                    if let Some(movement) = bindings.get("mouse_movement") {
-                        let Some(binding_table) = movement.as_inline_table() else {
-                            error!("mouse_movement field on {name}.{action_name} is not a table");
-                            break 'mouse;
-                        };
-                        let Some(sensitivity) = f32_from_table(binding_table, "sensitivity") else {
-                            error!(
-                                "cannot get number for {name}.{action_name}.keyboard.sensitivity"
-                            );
-                            break 'mouse;
-                        };
-                        mouse_bindings.movement = Some(MouseMotionBinding {
-                            motion_type: MouseMotionType::DeltaMotion,
-                            multiplier: sensitivity,
-                        });
-                    }
-                    if let Some(mouse_button) = bindings.get("mouse_button") {
-                        let Some(mouse_button) = mouse_button.as_array() else {
-                            error!("mouse_button field on {name}.{action_name} is not an array");
-                            break 'mouse;
-                        };
-                        for binding_table in mouse_button.iter() {
+                        for binding_table in keyboard.iter() {
                             let Some(binding_table) = binding_table.as_inline_table() else {
-                                error!("mouse binding array doesn't contain inline tables");
+                                error!("keyboard binding array doesn't contain inline tables");
                                 continue;
                             };
-                            let button = {
-                                let Some(val) = str_from_table(binding_table, "button") else {
-                                    error!("cannot get string for {name}.{action_name}.mouse_button.button");
+                            let key = {
+                                let Some(val) = str_from_table(binding_table, "key") else {
+                                    error!(
+                                        "cannot get string for {name}.{action_name}.keyboard.key"
+                                    );
                                     continue;
                                 };
-                                let Some(w) = str_to_mouse_button(val) else {
-                                    error!("unable to parse {val} as mouse button");
+                                let Some(w) = str_to_key_code(val) else {
+                                    error!("unable to parse {val} as keycode");
                                     continue;
                                 };
                                 w
@@ -286,7 +258,7 @@ fn deserialize_v1(
                             let axis_dir = {
                                 let Some(val) = str_from_table(binding_table, "axis_dir") else {
                                     error!(
-                                    "cannot get string for {name}.{action_name}.mouse_button.axis_dir"
+                                    "cannot get string for {name}.{action_name}.keyboard.axis_dir"
                                 );
                                     continue;
                                 };
@@ -298,8 +270,9 @@ fn deserialize_v1(
                             };
                             let axis = {
                                 let Some(val) = str_from_table(binding_table, "axis") else {
-                                    error!("cannot get string for {name}.{action_name}.mouse_button.axis");
-
+                                    error!(
+                                        "cannot get string for {name}.{action_name}.keyboard.axis"
+                                    );
                                     continue;
                                 };
                                 let Some(w) = str_to_input_axis(val) else {
@@ -311,7 +284,7 @@ fn deserialize_v1(
                             let behavior = {
                                 let Some(val) = str_from_table(binding_table, "button_behavior")
                                 else {
-                                    error!("cannot get string for {name}.{action_name}.mouse_button.button_behavior");
+                                    error!("cannot get string for {name}.{action_name}.keyboard.button_behavior");
                                     continue;
                                 };
                                 let Some(w) = str_to_button_behavior(val) else {
@@ -320,116 +293,221 @@ fn deserialize_v1(
                                 };
                                 w
                             };
-                            mouse_bindings = mouse_bindings.add_binding(MouseButtonBinding {
-                                button,
+                            let Some(multiplier) = f32_from_table(binding_table, "multiplier")
+                            else {
+                                error!(
+                                "cannot get number for {name}.{action_name}.keyboard.multiplier"
+                            );
+                                continue;
+                            };
+                            keyboard_bindings = keyboard_bindings.add_binding(KeyboardBinding {
+                                key,
                                 axis,
                                 axis_dir,
                                 behavior,
+                                multiplier,
+                            });
+                        }
+                    }
+                    'mouse: {
+                        if let Some(movement) = bindings.get("mouse_movement") {
+                            let Some(binding_table) = movement.as_inline_table() else {
+                                error!(
+                                    "mouse_movement field on {name}.{action_name} is not a table"
+                                );
+                                break 'mouse;
+                            };
+                            let Some(sensitivity) = f32_from_table(binding_table, "sensitivity")
+                            else {
+                                error!(
+                                "cannot get number for {name}.{action_name}.keyboard.sensitivity"
+                            );
+                                break 'mouse;
+                            };
+                            mouse_bindings.movement = Some(MouseMotionBinding {
+                                motion_type: MouseMotionType::DeltaMotion,
+                                multiplier: sensitivity,
+                            });
+                        }
+                        if let Some(mouse_button) = bindings.get("mouse_button") {
+                            let Some(mouse_button) = mouse_button.as_array() else {
+                                error!(
+                                    "mouse_button field on {name}.{action_name} is not an array"
+                                );
+                                break 'mouse;
+                            };
+                            for binding_table in mouse_button.iter() {
+                                let Some(binding_table) = binding_table.as_inline_table() else {
+                                    error!("mouse binding array doesn't contain inline tables");
+                                    continue;
+                                };
+                                let button = {
+                                    let Some(val) = str_from_table(binding_table, "button") else {
+                                        error!("cannot get string for {name}.{action_name}.mouse_button.button");
+                                        continue;
+                                    };
+                                    let Some(w) = str_to_mouse_button(val) else {
+                                        error!("unable to parse {val} as mouse button");
+                                        continue;
+                                    };
+                                    w
+                                };
+                                let axis_dir = {
+                                    let Some(val) = str_from_table(binding_table, "axis_dir")
+                                    else {
+                                        error!(
+                                    "cannot get string for {name}.{action_name}.mouse_button.axis_dir"
+                                );
+                                        continue;
+                                    };
+                                    let Some(w) = str_to_input_axis_dir(val) else {
+                                        error!("unable to parse {val} as axis direction");
+                                        continue;
+                                    };
+                                    w
+                                };
+                                let axis = {
+                                    let Some(val) = str_from_table(binding_table, "axis") else {
+                                        error!("cannot get string for {name}.{action_name}.mouse_button.axis");
+
+                                        continue;
+                                    };
+                                    let Some(w) = str_to_input_axis(val) else {
+                                        error!("unable to parse {val} as axis");
+                                        continue;
+                                    };
+                                    w
+                                };
+                                let behavior = {
+                                    let Some(val) =
+                                        str_from_table(binding_table, "button_behavior")
+                                    else {
+                                        error!("cannot get string for {name}.{action_name}.mouse_button.button_behavior");
+                                        continue;
+                                    };
+                                    let Some(w) = str_to_button_behavior(val) else {
+                                        error!("unable to parse {val} as button behavior");
+                                        continue;
+                                    };
+                                    w
+                                };
+                                mouse_bindings = mouse_bindings.add_binding(MouseButtonBinding {
+                                    button,
+                                    axis,
+                                    axis_dir,
+                                    behavior,
+                                });
+                            }
+                        }
+                    }
+                }
+
+                'gamepad: {
+                    if let Some(gamepad) = bindings.get("gamepad") {
+                        let Some(gamepad) = gamepad.as_array() else {
+                            error!("gamepad field on {name}.{action_name} is not an array");
+                            break 'gamepad;
+                        };
+                        for binding_table in gamepad.iter() {
+                            let Some(binding_table) = binding_table.as_inline_table() else {
+                                error!("gamepad binding array doesn't contain inline tables");
+                                continue;
+                            };
+                            let source = {
+                                let Some(val) = str_from_table(binding_table, "key") else {
+                                    error!(
+                                        "cannot get string for {name}.{action_name}.gamepad.key"
+                                    );
+                                    continue;
+                                };
+                                let Some(w) = str_to_gamepad_binding_source(val) else {
+                                    error!("unable to parse {val} as gamepad binding source");
+                                    continue;
+                                };
+                                w
+                            };
+                            let axis_dir = {
+                                let Some(val) = str_from_table(binding_table, "axis_dir") else {
+                                    error!(
+                                    "cannot get string for {name}.{action_name}.gamepad.axis_dir"
+                                );
+                                    continue;
+                                };
+                                let Some(w) = str_to_input_axis_dir(val) else {
+                                    error!("unable to parse {val} as axis direction");
+                                    continue;
+                                };
+                                w
+                            };
+                            let axis = {
+                                let Some(val) = str_from_table(binding_table, "axis") else {
+                                    error!(
+                                        "cannot get string for {name}.{action_name}.gamepad.axis"
+                                    );
+                                    continue;
+                                };
+                                let Some(w) = str_to_input_axis(val) else {
+                                    error!("unable to parse {val} as axis");
+                                    continue;
+                                };
+                                w
+                            };
+                            let behavior = {
+                                let Some(val) = str_from_table(binding_table, "button_behavior")
+                                else {
+                                    error!("cannot get string for {name}.{action_name}.gamepad.button_behavior");
+                                    continue;
+                                };
+                                let Some(w) = str_to_button_behavior(val) else {
+                                    error!("unable to parse {val} as button behavior");
+                                    continue;
+                                };
+                                w
+                            };
+                            gamepad_bindings = gamepad_bindings.add_binding(GamepadBinding {
+                                source,
+                                button_behavior: behavior,
+                                axis,
+                                axis_dir,
                             });
                         }
                     }
                 }
-            }
-
-            'gamepad: {
-                if let Some(gamepad) = bindings.get("gamepad") {
-                    let Some(gamepad) = gamepad.as_array() else {
-                        error!("gamepad field on {name}.{action_name} is not an array");
-                        break 'gamepad;
-                    };
-                    for binding_table in gamepad.iter() {
-                        let Some(binding_table) = binding_table.as_inline_table() else {
-                            error!("gamepad binding array doesn't contain inline tables");
-                            continue;
+                'gamepad_haptics: {
+                    if let Some(gamepad_haptics) = bindings.get("gamepad_haptics") {
+                        let Some(gamepad_haptics) = gamepad_haptics.as_array() else {
+                            error!("gamepad_haptics field on {name}.{action_name} is not an array");
+                            break 'gamepad_haptics;
                         };
-                        let source = {
-                            let Some(val) = str_from_table(binding_table, "key") else {
-                                error!("cannot get string for {name}.{action_name}.gamepad.key");
+                        for binding_table in gamepad_haptics.iter() {
+                            let Some(binding_table) = binding_table.as_inline_table() else {
+                                error!("gamepad binding array doesn't contain inline tables");
                                 continue;
                             };
-                            let Some(w) = str_to_gamepad_binding_source(val) else {
-                                error!("unable to parse {val} as gamepad binding source");
-                                continue;
+                            let haptic_type = {
+                                let Some(val) = str_from_table(binding_table, "haptic_type") else {
+                                    error!("cannot get string for {name}.{action_name}.gamepad_haptics.haptic_type");
+                                    continue;
+                                };
+                                let Some(w) = str_to_gamepad_haptics_type(val) else {
+                                    error!("unable to parse {val} as gamepad haptic type");
+                                    continue;
+                                };
+                                w
                             };
-                            w
-                        };
-                        let axis_dir = {
-                            let Some(val) = str_from_table(binding_table, "axis_dir") else {
-                                error!(
-                                    "cannot get string for {name}.{action_name}.gamepad.axis_dir"
-                                );
-                                continue;
-                            };
-                            let Some(w) = str_to_input_axis_dir(val) else {
-                                error!("unable to parse {val} as axis direction");
-                                continue;
-                            };
-                            w
-                        };
-                        let axis = {
-                            let Some(val) = str_from_table(binding_table, "axis") else {
-                                error!("cannot get string for {name}.{action_name}.gamepad.axis");
-                                continue;
-                            };
-                            let Some(w) = str_to_input_axis(val) else {
-                                error!("unable to parse {val} as axis");
-                                continue;
-                            };
-                            w
-                        };
-                        let behavior = {
-                            let Some(val) = str_from_table(binding_table, "button_behavior") else {
-                                error!("cannot get string for {name}.{action_name}.gamepad.button_behavior");
-                                continue;
-                            };
-                            let Some(w) = str_to_button_behavior(val) else {
-                                error!("unable to parse {val} as button behavior");
-                                continue;
-                            };
-                            w
-                        };
-                        gamepad_bindings = gamepad_bindings.add_binding(GamepadBinding {
-                            source,
-                            button_behavior: behavior,
-                            axis,
-                            axis_dir,
-                        });
+                            gamepad_haptics_bindings.bindings.push(haptic_type);
+                        }
                     }
                 }
+                cmds.entity(action_entity).insert((
+                    keyboard_bindings,
+                    mouse_bindings,
+                    gamepad_bindings,
+                    gamepad_haptics_bindings,
+                ));
             }
-            'gamepad_haptics: {
-                if let Some(gamepad_haptics) = bindings.get("gamepad_haptics") {
-                    let Some(gamepad_haptics) = gamepad_haptics.as_array() else {
-                        error!("gamepad_haptics field on {name}.{action_name} is not an array");
-                        break 'gamepad_haptics;
-                    };
-                    for binding_table in gamepad_haptics.iter() {
-                        let Some(binding_table) = binding_table.as_inline_table() else {
-                            error!("gamepad binding array doesn't contain inline tables");
-                            continue;
-                        };
-                        let haptic_type = {
-                            let Some(val) = str_from_table(binding_table, "haptic_type") else {
-                                error!("cannot get string for {name}.{action_name}.gamepad_haptics.haptic_type");
-                                continue;
-                            };
-                            let Some(w) = str_to_gamepad_haptics_type(val) else {
-                                error!("unable to parse {val} as gamepad haptic type");
-                                continue;
-                            };
-                            w
-                        };
-                        gamepad_haptics_bindings.bindings.push(haptic_type);
-                    }
-                }
-            }
-            cmds.entity(action_entity).insert((
-                keyboard_bindings,
-                mouse_bindings,
-                gamepad_bindings,
-                gamepad_haptics_bindings,
-            ));
         }
+        respone.send(FinnishedSchminputConfigDeserialization);
     }
 }
 

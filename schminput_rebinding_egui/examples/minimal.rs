@@ -1,10 +1,15 @@
+use std::path::PathBuf;
+
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
-use schminput_rebinding_egui::{egui_window::ShowEguiRebindingWindow, DefaultSchminputRebindingPlugins};
+use schminput_rebinding_egui::{
+    config::ConfigFilePath, egui_window::ShowEguiRebindingWindow, DefaultSchminputRebindingPlugins,
+};
 fn main() {
     let mut app = App::new();
     app.insert_resource(ShowEguiRebindingWindow(true));
+    app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/minimal.toml")));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
     app.add_plugins(EguiPlugin);
@@ -57,7 +62,7 @@ fn setup(mut cmds: Commands) {
             .add_binding(GamepadBinding::new(GamepadBindingSource::South))
             .add_binding(GamepadBinding::new(GamepadBindingSource::OtherButton(128))),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space).just_pressed()),
-        MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left))
+        MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)),
     ));
     cmds.spawn(ActionBundle::new(
         "jump_haptic",

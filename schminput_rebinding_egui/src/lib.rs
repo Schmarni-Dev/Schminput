@@ -4,8 +4,10 @@ pub mod egui_window;
 pub mod persistent_bindings;
 pub mod runtime_rebinding;
 pub mod str_converstions;
+pub mod config;
 
 use bevy::{app::PluginGroupBuilder, prelude::*};
+use config::SchminputConfigPlugin;
 use default_bindings::RebindingDefaultBindingsPlugin;
 use egui_window::RebindingEguiWindowPlugin;
 use persistent_bindings::PersistentBindingsPlugin;
@@ -18,6 +20,7 @@ impl PluginGroup for DefaultSchminputRebindingPlugins {
         plugins = plugins
             .add(RuntimeRebindingPlugin)
             .add(PersistentBindingsPlugin)
+            .add(SchminputConfigPlugin)
             .add(RebindingEguiWindowPlugin)
             .add(RebindingDefaultBindingsPlugin);
         plugins
