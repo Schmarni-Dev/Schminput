@@ -34,7 +34,7 @@ bevy_mod_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
 
 [workspace]
-members = ["schminput_rebinding_egui"]
+members = ["schminput_rebinding"]
 
 [workspace.dependencies]
 bevy = { version = "0.14", default-features = false }

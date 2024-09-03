@@ -11,9 +11,14 @@ keywords.workspace = true
 too_many_arguments = "allow"
 type_complexity = "allow"
 
+[[example]]
+name = "egui_minimal"
+required-features = ["egui"]
+
 [features]
-default = ["xr"]
+default = ["xr", "egui"]
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr", "schminput/xr"]
+egui = ["dep:bevy_egui"]
 
 [dependencies]
 schminput = { path = ".." }
@@ -21,7 +26,7 @@ bevy.workspace = true
 bevy_mod_openxr = { workspace = true, optional = true }
 bevy_mod_xr = { workspace = true, optional = true }
 openxr = { workspace = true, optional = true }
-bevy_egui = { version = "0.29.0", default-features = false }
+bevy_egui = { version = "0.29.0", default-features = false, optional = true }
 toml_edit = { version = "0.22.20", features = ["serde"] }
 dirs = "5.0.1"
 
