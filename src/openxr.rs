@@ -144,8 +144,8 @@ fn suggest_bindings(
         for (profile, bindings) in blueprint.bindings.iter() {
             suggest.send(OxrSuggestActionBinding {
                 action: action.as_raw(),
-                interaction_profile: Cow::from(*profile),
-                bindings: bindings.iter().map(|b| (*b).into()).collect(),
+                interaction_profile: profile.clone(),
+                bindings: bindings.clone(),
             });
         }
         cmds.entity(entity).insert(BindingsSuggested);
@@ -412,29 +412,32 @@ pub struct AttachSpaceToEntity(pub Entity);
 
 #[derive(Component, Default)]
 pub struct OxrActionBlueprint {
-    bindings: HashMap<&'static str, Vec<&'static str>>,
+    pub bindings: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
 }
 
 impl OxrActionBlueprint {
-    pub fn interaction_profile(self, profile: &'static str) -> OxrActionDeviceBindingBuilder {
+    pub fn interaction_profile(
+        self,
+        profile: impl Into<Cow<'static, str>>,
+    ) -> OxrActionDeviceBindingBuilder {
         OxrActionDeviceBindingBuilder {
             builder: self,
-            curr_interaction_profile: profile,
+            curr_interaction_profile: profile.into(),
         }
     }
 }
 
 pub struct OxrActionDeviceBindingBuilder {
     builder: OxrActionBlueprint,
-    curr_interaction_profile: &'static str,
+    curr_interaction_profile: Cow<'static, str>,
 }
 impl OxrActionDeviceBindingBuilder {
-    pub fn binding(mut self, binding: &'static str) -> Self {
+    pub fn binding(mut self, binding: impl Into<Cow<'static, str>>) -> Self {
         self.builder
             .bindings
-            .entry(self.curr_interaction_profile)
+            .entry(self.curr_interaction_profile.clone())
             .or_default()
-            .push(binding);
+            .push(binding.into());
         self
     }
 
