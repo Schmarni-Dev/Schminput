@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
-use schminput_rebinding_egui::{
+use schminput_rebinding::{
     config::ConfigFilePath, egui_window::ShowEguiRebindingWindow, DefaultSchminputRebindingPlugins,
 };
 fn main() {
     let mut app = App::new();
     app.insert_resource(ShowEguiRebindingWindow(true));
-    app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/minimal.toml")));
+    app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/egui_minimal.toml")));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
     app.add_plugins(EguiPlugin);

@@ -1,5 +1,5 @@
 [package]
-name = "schminput_rebinding_egui"
+name = "schminput_rebinding"
 license.workspace = true
 version.workspace = true
 edition.workspace = true
