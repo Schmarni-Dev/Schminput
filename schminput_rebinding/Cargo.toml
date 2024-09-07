@@ -14,9 +14,12 @@ type_complexity = "allow"
 [[example]]
 name = "egui_minimal"
 required-features = ["egui"]
+[[example]]
+name = "egui_xr"
+required-features = ["egui", "xr"]
 
 [features]
-default = ["xr", "egui"]
+default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr", "schminput/xr"]
 egui = ["dep:bevy_egui"]
 

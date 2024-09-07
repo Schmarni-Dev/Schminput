@@ -24,7 +24,7 @@ name = "xr"
 required-features = ["xr"]
 
 [features]
-default = ["xr"]
+default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]

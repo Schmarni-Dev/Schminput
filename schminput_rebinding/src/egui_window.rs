@@ -4,8 +4,6 @@ use crate::runtime_rebinding::RequestOpenXrRebinding;
 use crate::xr_utils::RestartXrSession;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-#[cfg(feature = "xr")]
-use bevy_mod_openxr::session::OxrSession;
 use schminput::prelude::*;
 
 use crate::{
@@ -44,7 +42,6 @@ fn draw_ui(
     request_save: EventWriter<SaveSchminputConfig>,
     request_load: EventWriter<LoadSchminputConfig>,
     #[cfg(feature = "xr")] request_session_restart: EventWriter<RestartXrSession>,
-    #[cfg(feature = "xr")] session: Option<Res<OxrSession>>,
     #[cfg(feature = "xr")] openxr_rebind: EventWriter<RequestOpenXrRebinding>,
 ) {
     egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
@@ -62,8 +59,6 @@ fn draw_ui(
             request_load,
             #[cfg(feature = "xr")]
             request_session_restart,
-            #[cfg(feature = "xr")]
-            session,
             #[cfg(feature = "xr")]
             openxr_rebind,
         );

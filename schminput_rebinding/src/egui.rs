@@ -22,8 +22,6 @@ use crate::{
         RequestGamepadRebinding, RequestKeyboardRebinding, RequestMouseRebinding, WaitingForInput,
     },
 };
-#[cfg(feature = "xr")]
-use bevy_mod_openxr::session::OxrSession;
 
 const DELETE_CHAR: char = '🗙';
 fn get_delete_text() -> RichText {
@@ -98,7 +96,6 @@ pub fn draw_rebinding_ui(
     mut request_save: EventWriter<SaveSchminputConfig>,
     mut request_load: EventWriter<LoadSchminputConfig>,
     #[cfg(feature = "xr")] mut request_session_restart: EventWriter<RestartXrSession>,
-    #[cfg(feature = "xr")] session: Option<Res<OxrSession>>,
     #[cfg(feature = "xr")] mut openxr_rebind: EventWriter<RequestOpenXrRebinding>,
 ) {
     if waiting.waiting() {
@@ -337,7 +334,7 @@ pub fn draw_rebinding_ui(
 #[cfg(feature = "xr")]
 pub fn draw_openxr_interaction_profile(
     ui: &mut Ui,
-    profile: &Cow<'static, str>,
+    #[allow(clippy::ptr_arg)] profile: &Cow<'static, str>,
     bindings: &mut [Cow<'static, str>],
     action: Entity,
     interaction_profile_index: usize,

@@ -53,13 +53,6 @@ impl Plugin for OxrInputPlugin {
         app.add_systems(XrPreSessionEnd, reset_space_values);
         app.add_systems(XrPreSessionEnd, clean_actions);
         app.add_systems(XrPreSessionEnd, clean_action_sets);
-        app.add_systems(XrPreSessionEnd, test);
-    }
-}
-
-fn test(query: Query<Entity, With<XrSpace>>, mut cmds: Commands) {
-    for e in &query {
-        cmds.entity(e).remove::<XrSpace>();
     }
 }
 
@@ -428,14 +421,13 @@ fn sync_input_actions(
             }
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
-
     }
 }
 
 #[derive(Component, DerefMut, Deref, Clone, Copy)]
 pub struct AttachSpaceToEntity(pub Entity);
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct OxrActionBlueprint {
     pub bindings: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
 }

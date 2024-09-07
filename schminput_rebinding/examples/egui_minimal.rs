@@ -9,7 +9,9 @@ use schminput_rebinding::{
 fn main() {
     let mut app = App::new();
     app.insert_resource(ShowEguiRebindingWindow(true));
-    app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/egui_minimal.toml")));
+    app.insert_resource(ConfigFilePath::Path(PathBuf::from(
+        "./config/egui_minimal.toml",
+    )));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
     app.add_plugins(EguiPlugin);

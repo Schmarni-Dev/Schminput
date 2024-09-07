@@ -29,19 +29,25 @@ fn reset_bindings(
     mut event: EventReader<ResetToDefautlBindings>,
     mut cmds: Commands,
     query: Query<(Entity, &DefaultBindings)>,
-    default_bindings_query: Query<(
+    #[cfg(not(feature = "xr"))] default_bindings_query: Query<(
         Option<&KeyboardBindings>,
         Option<&GamepadBindings>,
         Option<&MouseBindings>,
         Option<()>,
+    )>,
+    #[cfg(feature = "xr")] default_bindings_query: Query<(
+        Option<&KeyboardBindings>,
+        Option<&GamepadBindings>,
+        Option<&MouseBindings>,
+        Option<&OxrActionBlueprint>,
     )>,
 ) {
     for event in event.read().copied() {
         match event {
             ResetToDefautlBindings::All => {
                 for (action, bindings) in &query {
-                    let Ok((keyboard, gamepad, mouse, xr)) = default_bindings_query.get(bindings.0)
-                    else {
+                    #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
+                    let Ok((keyboard, gamepad, mouse, xr)) = default_bindings_query.get(bindings.0) else {
                         continue;
                     };
                     let mut w = cmds.entity(action);
@@ -62,11 +68,11 @@ fn reset_bindings(
                         w.remove::<MouseBindings>();
                     }
 
+                    #[cfg(feature = "xr")]
                     if let Some(v) = xr {
-                        #[allow(clippy::unit_arg, clippy::clone_on_copy)]
                         w.insert(v.clone());
                     } else {
-                        w.remove::<()>();
+                        w.remove::<OxrActionBlueprint>();
                     }
                 }
             }
@@ -75,8 +81,8 @@ fn reset_bindings(
                 let Ok((action, bindings)) = query.get(action) else {
                     continue;
                 };
-                let Ok((keyboard, gamepad, mouse, xr)) = default_bindings_query.get(bindings.0)
-                else {
+                #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
+                let Ok((keyboard, gamepad, mouse, xr)) = default_bindings_query.get(bindings.0) else {
                     continue;
                 };
                 let mut w = cmds.entity(action);
@@ -97,11 +103,11 @@ fn reset_bindings(
                     w.remove::<MouseBindings>();
                 }
 
+                #[cfg(feature = "xr")]
                 if let Some(v) = xr {
-                    #[allow(clippy::unit_arg, clippy::clone_on_copy)]
                     w.insert(v.clone());
                 } else {
-                    w.remove::<()>();
+                    w.remove::<OxrActionBlueprint>();
                 }
             }
         }
@@ -109,15 +115,23 @@ fn reset_bindings(
 }
 
 fn copy_default_bindings(
-    query: Query<(
+    #[cfg(not(feature = "xr"))] query: Query<(
         Entity,
         Option<&KeyboardBindings>,
         Option<&GamepadBindings>,
         Option<&MouseBindings>,
         Option<()>,
     )>,
+    #[cfg(feature = "xr")] query: Query<(
+        Entity,
+        Option<&KeyboardBindings>,
+        Option<&GamepadBindings>,
+        Option<&MouseBindings>,
+        Option<&OxrActionBlueprint>,
+    )>,
     mut cmds: Commands,
 ) {
+    #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
     for (action, keyboard, gamepad, mouse, xr) in &query {
         let mut w = cmds.spawn_empty();
         if let Some(v) = keyboard {
@@ -129,6 +143,7 @@ fn copy_default_bindings(
         if let Some(v) = mouse {
             w.insert(v.clone());
         }
+        #[cfg(feature = "xr")]
         if let Some(v) = xr {
             #[allow(clippy::unit_arg, clippy::clone_on_copy)]
             w.insert(v.clone());

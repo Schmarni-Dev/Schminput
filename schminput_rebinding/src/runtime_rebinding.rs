@@ -1,3 +1,4 @@
+#[cfg(feature = "xr")]
 use std::borrow::Cow;
 
 use bevy::{

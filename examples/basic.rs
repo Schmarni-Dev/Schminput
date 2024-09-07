@@ -66,9 +66,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn(ActionBundle::new("jump", "Jump", set)).insert((
         JumpAction,
         BoolActionValue::default(),
-        GamepadBindings::default().add_binding(
-            GamepadBinding::new(GamepadBindingSource::South),
-        ),
+        GamepadBindings::default().add_binding(GamepadBinding::new(GamepadBindingSource::South)),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
     ));
     cmds.spawn(ActionBundle::new(

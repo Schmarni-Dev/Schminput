@@ -2,15 +2,7 @@ use bevy::prelude::*;
 use schminput::prelude::*;
 use toml_edit::{value, DocumentMut, Item, TableLike, Value};
 
-use crate::{
-    egui::PlaceholderComponent,
-    str_converstions::{
-        button_behavior_to_str, gamepad_binding_source_to_cow_str, gamepad_haptics_type_to_str,
-        input_axis_dir_to_str, input_axis_to_str, key_code_to_str, mouse_button_to_cow_str,
-        str_to_button_behavior, str_to_gamepad_binding_source, str_to_gamepad_haptics_type,
-        str_to_input_axis, str_to_input_axis_dir, str_to_key_code, str_to_mouse_button,
-    },
-};
+use crate::str_converstions::*;
 
 #[derive(SystemSet, Hash, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum PersistentBindingsSet {
@@ -64,9 +56,9 @@ pub struct FinnishedSchminputConfigSerialization {
 }
 
 #[cfg(feature = "xr")]
-type OxrBindings = OxrActionBlueprint;
+type OxrBindings<'a> = &'a OxrActionBlueprint;
 #[cfg(not(feature = "xr"))]
-type OxrBindings = PlaceholderComponent;
+type OxrBindings = ();
 
 fn serialize_v1(
     mut request: EventReader<SerializeSchminputConfig>,
@@ -76,7 +68,7 @@ fn serialize_v1(
         Option<&MouseBindings>,
         Option<&GamepadBindings>,
         Option<&GamepadHapticOutputBindings>,
-        Option<&OxrBindings>,
+        Option<OxrBindings>,
         &ActionName,
     )>,
     set_query: Query<(&ActionSetName, &ActionsInSet)>,
@@ -93,6 +85,7 @@ fn serialize_v1(
         doc.entry("version").or_insert(toml_edit::value(1i64));
         for (set_name, actions) in &set_query {
             let mut iter = action_query.iter_many_mut(actions.0.iter());
+            #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
             while let Some((keyboard, mouse, gamepad, gamepad_haptics, openxr, name)) =
                 iter.fetch_next()
             {
@@ -179,6 +172,7 @@ fn serialize_v1(
                     bindings_list.fmt();
                     doc_bindings["gamepad_haptics"] = toml_edit::value(bindings_list);
                 }
+                #[cfg(feature = "xr")]
                 if let Some(openxr) = openxr {
                     let mut table = toml_edit::Table::new();
                     for (interaction_profile, bindings) in openxr.bindings.iter() {
@@ -254,11 +248,13 @@ fn deserialize_v1(
                 let mut mouse_bindings = MouseBindings::default();
                 let mut gamepad_bindings = GamepadBindings::default();
                 let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
+                #[cfg_attr(not(feature = "xr"), allow(unused_variables), allow(unused_mut))]
                 let mut xr_bindings;
                 #[cfg(feature = "xr")]
                 {
                     xr_bindings = OxrActionBlueprint::default();
                 }
+                #[allow(unused_assignments)]
                 #[cfg(not(feature = "xr"))]
                 {
                     xr_bindings = ();
@@ -384,6 +380,7 @@ fn deserialize_v1(
         respone.send(FinnishedSchminputConfigDeserialization);
     }
 }
+#[cfg(feature = "xr")]
 fn parse_openxr(
     bindings: &toml_edit::Table,
     name: &str,

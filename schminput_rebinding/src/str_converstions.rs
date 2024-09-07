@@ -5,7 +5,8 @@ use bevy::{
     log::error,
 };
 use schminput::{
-    gamepad::{GamepadBindingSource, GamepadHapticType}, ButtonInputBeheavior, InputAxis, InputAxisDirection,
+    gamepad::{GamepadBindingSource, GamepadHapticType},
+    ButtonInputBeheavior, InputAxis, InputAxisDirection,
 };
 pub(crate) fn gamepad_haptics_type_to_str(haptics: GamepadHapticType) -> &'static str {
     match haptics {
