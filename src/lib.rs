@@ -1,3 +1,4 @@
+pub mod binding_modification;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
@@ -6,9 +7,10 @@ pub mod openxr;
 pub mod prelude;
 pub mod subaction_paths;
 
-use std::{borrow::Cow, hash::Hash, mem};
+use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
-use bevy::{app::PluginGroupBuilder, prelude::*};
+use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
+use binding_modification::BindingModifiactions;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
@@ -23,6 +25,8 @@ pub struct SchminputPlugin;
 
 impl Plugin for SchminputPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<InputAxis>();
+        app.register_type::<InputAxisDirection>();
         app.configure_sets(
             PreUpdate,
             (
@@ -38,7 +42,45 @@ impl Plugin for SchminputPlugin {
         app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
+        app.observe(on_add_in_action_set);
+
+        app.observe(
+            |trigger: Trigger<OnRemove, InActionSet>,
+             mut set_query: Query<&mut ActionsInSet>,
+             action_query: Query<&InActionSet>| {
+                if trigger.entity() == Entity::PLACEHOLDER {
+                    warn!("OnRemove entity is Placeholder");
+                    return;
+                }
+                let Ok(in_action_set) = action_query.get(trigger.entity()) else {
+                    warn!("OnRemove unable to get removed component");
+                    return;
+                };
+                let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
+                    return;
+                };
+                actions_in_set.0.insert(trigger.entity());
+            },
+        );
     }
+}
+
+fn on_add_in_action_set(
+    trigger: Trigger<OnAdd, InActionSet>,
+    mut set_query: Query<&mut ActionsInSet>,
+    action_query: Query<&InActionSet>,
+) {
+    if trigger.entity() == Entity::PLACEHOLDER {
+        warn!("OnAdd entity is Placeholder");
+        return;
+    }
+    let Ok(in_action_set) = action_query.get(trigger.entity()) else {
+        return;
+    };
+    let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
+        return;
+    };
+    actions_in_set.0.insert(trigger.entity());
 }
 
 fn clean_bool(mut query: Query<&mut BoolActionValue>) {
@@ -76,7 +118,10 @@ impl PluginGroup for DefaultSchminputPlugins {
 
 /// The ActionSet This Action belongs to.
 #[derive(Debug, Clone, Copy, Component, Reflect, Deref)]
-pub struct ActionSet(pub Entity);
+pub struct InActionSet(pub Entity);
+
+#[derive(Debug, Clone, Component, Reflect, Deref, Default)]
+pub struct ActionsInSet(pub EntityHashSet<Entity>);
 
 /// The Display name of the Action Set.
 #[derive(Debug, Clone, Component, Reflect, Deref)]
@@ -114,6 +159,15 @@ pub enum InputAxis {
     Y,
 }
 
+impl Display for InputAxis {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputAxis::X => f.write_str("X Axis"),
+            InputAxis::Y => f.write_str("Y Axis"),
+        }
+    }
+}
+
 impl InputAxis {
     pub fn vec_axis(&self, vec: Vec2) -> f32 {
         match self {
@@ -140,6 +194,15 @@ pub enum InputAxisDirection {
     Negative,
 }
 
+impl Display for InputAxisDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            InputAxisDirection::Positive => f.write_str("+"),
+            InputAxisDirection::Negative => f.write_str("-"),
+        }
+    }
+}
+
 impl InputAxisDirection {
     #[inline(always)]
     pub fn as_multipier(&self) -> f32 {
@@ -150,6 +213,7 @@ impl InputAxisDirection {
     }
 }
 
+// TODO: add released?
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
 pub enum ButtonInputBeheavior {
     JustPressed,
@@ -171,12 +235,22 @@ impl ButtonInputBeheavior {
         }
     }
 }
+impl Display for ButtonInputBeheavior {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            ButtonInputBeheavior::JustPressed => "On Press",
+            ButtonInputBeheavior::Pressed => "Pressed",
+            ButtonInputBeheavior::JustReleased => "On Release",
+        })
+    }
+}
 
 #[derive(Bundle, Clone, Debug)]
 pub struct ActionSetBundle {
     pub id: ActionSetName,
     pub name: LocalizedActionSetName,
     pub enabled: ActionSetEnabled,
+    pub actions: ActionsInSet,
 }
 
 impl ActionSetBundle {
@@ -188,6 +262,7 @@ impl ActionSetBundle {
             id: ActionSetName(id.into()),
             name: LocalizedActionSetName(name.into()),
             enabled: ActionSetEnabled(true),
+            actions: ActionsInSet::default(),
         }
     }
 }
@@ -196,8 +271,9 @@ impl ActionSetBundle {
 pub struct ActionBundle {
     pub id: ActionName,
     pub name: LocalizedActionName,
-    pub set: ActionSet,
+    pub set: InActionSet,
     pub paths: RequestedSubactionPaths,
+    pub modifications: BindingModifiactions,
 }
 
 impl ActionBundle {
@@ -209,8 +285,9 @@ impl ActionBundle {
         ActionBundle {
             id: ActionName(id.into()),
             name: LocalizedActionName(name.into()),
-            set: ActionSet(set),
+            set: InActionSet(set),
             paths: RequestedSubactionPaths::default(),
+            modifications: BindingModifiactions::default(),
         }
     }
 }

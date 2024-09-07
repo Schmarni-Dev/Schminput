@@ -1,5 +1,13 @@
 use bevy::{color::palettes::css, diagnostic::FrameTimeDiagnosticsPlugin, prelude::*};
+use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
+use schminput_rebinding::{
+    config::{ConfigFilePath, LoadSchminputConfig},
+    egui_window::ShowEguiRebindingWindow,
+    DefaultSchminputRebindingPlugins,
+};
+use std::path::PathBuf;
+
 #[derive(Component, Clone, Copy)]
 struct HandLeft;
 #[derive(Component, Clone, Copy)]
@@ -14,9 +22,15 @@ struct JumpAction;
 
 fn main() {
     let mut app = App::new();
+    app.insert_resource(ShowEguiRebindingWindow(true));
+    app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/egui_xr.toml")));
     app.add_plugins(bevy_mod_openxr::add_xr_plugins(DefaultPlugins));
     app.add_plugins(FrameTimeDiagnosticsPlugin);
     app.add_plugins(schminput::DefaultSchminputPlugins);
+    app.add_plugins(DefaultSchminputRebindingPlugins);
+    app.world_mut().send_event(LoadSchminputConfig);
+
+    app.add_plugins(EguiPlugin);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
     app.add_systems(Update, run);
@@ -24,8 +38,11 @@ fn main() {
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let player_set = cmds.spawn(ActionSetBundle::new("player", "Player")).id();
-    let pose_set = cmds.spawn(ActionSetBundle::new("pose", "Poses")).id();
+    cmds.spawn(Camera3dBundle { ..default() });
+    let player_set = cmds
+        .spawn(ActionSetBundle::new("movement", "Movement"))
+        .id();
+    let pose_set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
     cmds.spawn(ActionBundle::new("move", "Move", player_set))
         .insert((
             MoveAction,
@@ -103,11 +120,11 @@ fn run(
     info!("jump: {}", jump_action.single().any);
     for hand in left_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);
+        gizmos.sphere(pos, rot, 0.01, css::ORANGE_RED);
     }
     for hand in right_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::LIMEGREEN);
+        gizmos.sphere(pos, rot, 0.01, css::LIMEGREEN);
     }
 }
 

@@ -4,7 +4,7 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
-    action_set_syncing::OxrActionSetSyncSet,
+    action_set_syncing::{OxrActionSetSyncSet, OxrSyncActionSet},
     helper_traits::ToVec2 as _,
     resources::OxrInstance,
     session::OxrSession,
@@ -17,10 +17,9 @@ use bevy_mod_xr::{
 };
 
 use crate::{
-    subaction_paths::{
-        RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
-    },
-    ActionName, ActionSet, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue,
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
+    subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathStr},
+    ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
 
@@ -42,19 +41,36 @@ impl Plugin for OxrInputPlugin {
                 .in_set(SchminputSet::SyncInputActions)
                 .before(OxrSpaceSyncSet),
         );
-        app.add_systems(XrSessionCreated, attach_action_sets);
-        app.add_systems(OxrSendActionBindings, suggest_bindings);
-        // TODO: make this runnable at multiple points if possible?
         app.add_systems(
-            PostStartup,
-            (insert_xr_subaction_paths, create_input_actions)
-                .chain()
-                .run_if(session_available),
+            XrSessionCreated,
+            (create_input_actions, attach_action_sets).chain(),
         );
-        // might be incorrect?
+        app.add_systems(OxrSendActionBindings, suggest_bindings);
+        app.add_systems(
+            PreUpdate,
+            insert_xr_subaction_paths.run_if(session_available),
+        );
         app.add_systems(XrPreSessionEnd, reset_space_values);
+        app.add_systems(XrPreSessionEnd, clean_actions);
+        app.add_systems(XrPreSessionEnd, clean_action_sets);
     }
 }
+
+fn clean_action_sets(query: Query<Entity, With<OxrActionSet>>, mut cmds: Commands) {
+    for e in &query {
+        cmds.entity(e).remove::<OxrActionSet>();
+    }
+}
+fn clean_actions(query: Query<Entity, With<OxrAction>>, mut cmds: Commands) {
+    for e in &query {
+        cmds.entity(e)
+            .remove::<OxrAction>()
+            .remove::<BindingsSuggested>();
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Component)]
+struct NonOxrSubationPath;
 
 fn attach_spaces_to_target_entities(
     query: Query<(&AttachSpaceToEntity, &SpaceActionValue)>,
@@ -63,7 +79,7 @@ fn attach_spaces_to_target_entities(
 ) {
     for (target, value) in query.iter() {
         let Some(space) = value.any else {
-            debug!("no space to attach to entity");
+            info!("no space to attach to entity");
             continue;
         };
         if !check_query
@@ -83,21 +99,26 @@ fn reset_space_values(mut query: Query<&mut SpaceActionValue>) {
 }
 
 #[derive(Component, Clone)]
+pub struct IsOxrSubactionPath;
+
+#[derive(Component, Clone)]
 pub struct OxrSubactionPath(pub openxr::Path);
 
 fn insert_xr_subaction_paths(
-    query: Query<&SubactionPathStr>,
+    query: Query<
+        (Entity, &SubactionPathStr),
+        (Without<IsOxrSubactionPath>, Without<NonOxrSubationPath>),
+    >,
     mut cmds: Commands,
-    mut event: EventReader<SubactionPathCreated>,
     instance: Res<OxrInstance>,
 ) {
-    for e in event.read() {
-        let Ok(path) = query.get(e.0 .0) else {
-            error!("Invalid SubactionPath Entity: {:#?}", e.0 .0);
-            continue;
-        };
+    for (e, path) in &query {
         if let Some(xr_path) = path.0.strip_prefix("/oxr") {
-            cmds.entity(e.0 .0)
+            cmds.entity(e).insert(IsOxrSubactionPath);
+            if xr_path.is_empty() || xr_path == "/*" {
+                continue;
+            }
+            cmds.entity(e)
                 .insert(OxrSubactionPath(match instance.string_to_path(xr_path) {
                     Ok(v) => v,
                     Err(err) => {
@@ -105,20 +126,25 @@ fn insert_xr_subaction_paths(
                         continue;
                     }
                 }));
+        } else {
+            cmds.entity(e).insert(NonOxrSubationPath);
         }
     }
 }
 
-fn sync_action_sets(query: Query<(&OxrActionSet, &ActionSetEnabled)>, session: Res<OxrSession>) {
+fn sync_action_sets(
+    query: Query<(&OxrActionSet, &ActionSetEnabled)>,
+    mut sync_set: EventWriter<OxrSyncActionSet>,
+) {
     let sets = query
         .iter()
         .filter(|(_, v)| v.0)
-        .map(|(set, _)| openxr::ActiveActionSet::new(set))
-        .collect::<Vec<_>>();
-    let result = session.sync_actions(&sets);
-    if let Err(err) = result {
-        warn!("Unable to sync action sets: {}", err.to_string())
-    }
+        .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
+    sync_set.send_batch(sets);
+    // let result = session.sync_actions(sets);
+    // if let Err(err) = result {
+    //     warn!("Unable to sync action sets: {}", err.to_string())
+    // }
 }
 
 fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
@@ -136,8 +162,8 @@ fn suggest_bindings(
         for (profile, bindings) in blueprint.bindings.iter() {
             suggest.send(OxrSuggestActionBinding {
                 action: action.as_raw(),
-                interaction_profile: Cow::from(*profile),
-                bindings: bindings.iter().map(|b| (*b).into()).collect(),
+                interaction_profile: profile.clone(),
+                bindings: bindings.clone(),
             });
         }
         cmds.entity(entity).insert(BindingsSuggested);
@@ -149,7 +175,7 @@ fn create_input_actions(
     mut cmds: Commands,
     query: Query<(
         Entity,
-        &ActionSet,
+        &InActionSet,
         &ActionName,
         Option<&LocalizedActionName>,
         &RequestedSubactionPaths,
@@ -190,9 +216,7 @@ fn create_input_actions(
             .filter_map(|p| path_query.get(p.0).ok())
             .map(|p| p.0)
             .collect::<Vec<_>>();
-        let action = match (
-            has_bool, has_f32, has_vec2, has_space, /* has_pose || has_set_pose */
-        ) {
+        let action = match (has_bool, has_f32, has_vec2, has_space) {
             (true, false, false, false) => OxrAction::Bool(
                 action_set
                     .create_action(action_id, action_name, &paths)
@@ -240,10 +264,13 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut SpaceActionValue>,
         &RequestedSubactionPaths,
+        &BindingModifiactions,
     )>,
     path_query: Query<&OxrSubactionPath>,
+    simple_path_query: Query<Has<IsOxrSubactionPath>>,
+    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
+    time: Res<Time>,
 ) {
-    // );
     for (
         mut action,
         mut bool_val,
@@ -251,6 +278,7 @@ fn sync_input_actions(
         mut vec2_val,
         mut space_val,
         requested_subaction_paths,
+        modifications,
     ) in &mut query
     {
         let paths = requested_subaction_paths
@@ -258,12 +286,27 @@ fn sync_input_actions(
             .filter_map(|p| Some((*p, path_query.get(p.0).ok()?)))
             .map(|(sub_path, path)| (sub_path, path.0))
             .collect::<Vec<_>>();
+        let mut pre_mul_delta_time = modifications
+            .all_paths
+            .as_ref()
+            .and_then(|v| modification_query.get(v.0).ok())
+            .unwrap_or_default();
+        for (_, modification) in modifications
+            .per_path
+            .iter()
+            .filter(|(p, _)| simple_path_query.get(p.0).unwrap_or(false))
+        {
+            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
+        }
+        let delta_multiplier = match pre_mul_delta_time {
+            true => time.delta_seconds(),
+            false => 1.0,
+        };
         match action.as_mut() {
             OxrAction::Bool(action) => {
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
                         if let Some(val) = bool_val.as_mut() {
-                            // This might be broken!
                             val.any |= v.current_state;
                         } else {
                             warn!("Bool action but no bool Value!");
@@ -275,7 +318,6 @@ fn sync_input_actions(
                     match action.state(&session, path) {
                         Ok(v) => {
                             if let Some(val) = bool_val.as_mut() {
-                                // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() |=
                                     v.current_state;
                             } else {
@@ -290,8 +332,7 @@ fn sync_input_actions(
                 match action.state(&session, openxr::Path::NULL) {
                     Ok(v) => {
                         if let Some(val) = f32_val.as_mut() {
-                            // This might be broken!
-                            val.any += v.current_state;
+                            val.any += v.current_state * delta_multiplier;
                         } else {
                             warn!("F32 action but no f32 Value!");
                         }
@@ -302,9 +343,8 @@ fn sync_input_actions(
                     match action.state(&session, path) {
                         Ok(v) => {
                             if let Some(val) = f32_val.as_mut() {
-                                // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state;
+                                    v.current_state * delta_multiplier;
                             } else {
                                 warn!("F32 action but no f32 Value!");
                             }
@@ -318,7 +358,7 @@ fn sync_input_actions(
                     Ok(v) => {
                         if let Some(val) = vec2_val.as_mut() {
                             // This might be broken!
-                            val.any += v.current_state.to_vec2();
+                            val.any += v.current_state.to_vec2() * delta_multiplier;
                         } else {
                             warn!("Vec2 action but no Vec2 Value!");
                         }
@@ -331,7 +371,7 @@ fn sync_input_actions(
                             if let Some(val) = vec2_val.as_mut() {
                                 // This might be broken!
                                 *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state.to_vec2();
+                                    v.current_state.to_vec2() * delta_multiplier;
                             } else {
                                 warn!("Vec2 action but no Vec2 Value!");
                             }
@@ -387,31 +427,34 @@ fn sync_input_actions(
 #[derive(Component, DerefMut, Deref, Clone, Copy)]
 pub struct AttachSpaceToEntity(pub Entity);
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Clone)]
 pub struct OxrActionBlueprint {
-    bindings: HashMap<&'static str, Vec<&'static str>>,
+    pub bindings: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
 }
 
 impl OxrActionBlueprint {
-    pub fn interaction_profile(self, profile: &'static str) -> OxrActionDeviceBindingBuilder {
+    pub fn interaction_profile(
+        self,
+        profile: impl Into<Cow<'static, str>>,
+    ) -> OxrActionDeviceBindingBuilder {
         OxrActionDeviceBindingBuilder {
             builder: self,
-            curr_interaction_profile: profile,
+            curr_interaction_profile: profile.into(),
         }
     }
 }
 
 pub struct OxrActionDeviceBindingBuilder {
     builder: OxrActionBlueprint,
-    curr_interaction_profile: &'static str,
+    curr_interaction_profile: Cow<'static, str>,
 }
 impl OxrActionDeviceBindingBuilder {
-    pub fn binding(mut self, binding: &'static str) -> Self {
+    pub fn binding(mut self, binding: impl Into<Cow<'static, str>>) -> Self {
         self.builder
             .bindings
-            .entry(self.curr_interaction_profile)
+            .entry(self.curr_interaction_profile.clone())
             .or_default()
-            .push(binding);
+            .push(binding.into());
         self
     }
 

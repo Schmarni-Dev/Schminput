@@ -1,30 +1,27 @@
-use std::time::Duration;
+use std::path::PathBuf;
 
-use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
+use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
-
+use schminput_rebinding::{
+    config::ConfigFilePath, egui_window::ShowEguiRebindingWindow, DefaultSchminputRebindingPlugins,
+};
 fn main() {
     let mut app = App::new();
+    app.insert_resource(ShowEguiRebindingWindow(true));
+    app.insert_resource(ConfigFilePath::Path(PathBuf::from(
+        "./config/egui_minimal.toml",
+    )));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
-    app.add_systems(Startup, setup);
-    app.add_systems(Update, run);
+    app.add_plugins(EguiPlugin);
+    app.add_plugins(DefaultSchminputRebindingPlugins);
 
+    app.add_systems(Startup, setup);
     app.run();
 }
-
-#[derive(Component, Clone, Copy)]
-struct MoveAction;
-#[derive(Component, Clone, Copy)]
-struct LookAction;
-#[derive(Component, Clone, Copy)]
-struct JumpAction;
-#[derive(Component, Clone, Copy)]
-struct JumpHapticAction;
-
 fn setup(mut cmds: Commands) {
-    let set = cmds.spawn(ActionSetBundle::new("core", "core")).id();
+    let set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
     use schminput::keyboard::KeyboardBinding as KbB;
     cmds.spawn((
         ActionBundle::new("move", "Move", set),
@@ -45,7 +42,6 @@ fn setup(mut cmds: Commands) {
                     .y_axis()
                     .positive(),
             ),
-        MoveAction,
     ));
     cmds.spawn(ActionBundle::new("look", "Look", set)).insert((
         Vec2ActionValue::default(),
@@ -61,13 +57,14 @@ fn setup(mut cmds: Commands) {
                     .y_axis()
                     .positive(),
             ),
-        LookAction,
     ));
     cmds.spawn(ActionBundle::new("jump", "Jump", set)).insert((
-        JumpAction,
         BoolActionValue::default(),
-        GamepadBindings::default().add_binding(GamepadBinding::new(GamepadBindingSource::South)),
-        KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
+        GamepadBindings::default()
+            .add_binding(GamepadBinding::new(GamepadBindingSource::South))
+            .add_binding(GamepadBinding::new(GamepadBindingSource::OtherButton(128))),
+        KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space).just_pressed()),
+        MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)),
     ));
     cmds.spawn(ActionBundle::new(
         "jump_haptic",
@@ -75,32 +72,8 @@ fn setup(mut cmds: Commands) {
         set,
     ))
     .insert((
-        JumpHapticAction,
         GamepadHapticOutput::default(),
         GamepadHapticOutputBindings::default().weak(),
     ));
-    cmds.spawn(Camera3dBundle::default());
-}
-
-fn run(
-    move_action: Query<&Vec2ActionValue, With<MoveAction>>,
-    look_action: Query<&Vec2ActionValue, With<LookAction>>,
-    jump_action: Query<&BoolActionValue, With<JumpAction>>,
-    mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
-) {
-    for action in move_action.into_iter() {
-        info!("move: {}", action.any);
-    }
-    for action in look_action.into_iter() {
-        info!("look: {}", action.any);
-    }
-    for action in jump_action.into_iter() {
-        info!("jump: {}", action.any);
-        if action.any {
-            //panics if action doesn't exist
-            jump_haptic_action
-                .single_mut()
-                .add(Duration::from_millis(50), 1.0);
-        }
-    }
+    cmds.spawn(Camera3dBundle { ..default() });
 }
