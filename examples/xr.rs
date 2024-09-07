@@ -5,12 +5,22 @@ struct HandLeft;
 #[derive(Component, Clone, Copy)]
 struct HandRight;
 
-#[derive(Component, Clone, Copy)]
-struct MoveAction;
-#[derive(Component, Clone, Copy)]
-struct LookAction;
-#[derive(Component, Clone, Copy)]
-struct JumpAction;
+#[allow(dead_code)]
+#[derive(Resource, Clone, Copy)]
+struct CoreActions {
+    set: Entity,
+    left_pose: Entity,
+    right_pose: Entity,
+}
+
+#[allow(dead_code)]
+#[derive(Resource, Clone, Copy)]
+struct MoveActions {
+    set: Entity,
+    move_action: Entity,
+    look: Entity,
+    jump: Entity,
+}
 
 fn main() {
     let mut app = App::new();
@@ -26,27 +36,29 @@ fn main() {
 fn setup(mut cmds: Commands) {
     let player_set = cmds.spawn(ActionSetBundle::new("player", "Player")).id();
     let pose_set = cmds.spawn(ActionSetBundle::new("pose", "Poses")).id();
-    cmds.spawn(ActionBundle::new("move", "Move", player_set))
+    let move_action = cmds
+        .spawn(ActionBundle::new("move", "Move", player_set))
         .insert((
-            MoveAction,
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/left/input/thumbstick")
                 .end(),
             Vec2ActionValue::default(),
-        ));
-    cmds.spawn(ActionBundle::new("look", "Look", player_set))
+        ))
+        .id();
+    let look = cmds
+        .spawn(ActionBundle::new("look", "Look", player_set))
         .insert((
-            LookAction,
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/right/input/thumbstick/x")
                 .end(),
             F32ActionValue::default(),
-        ));
-    cmds.spawn(ActionBundle::new("jump", "Jump", player_set))
+        ))
+        .id();
+    let jump = cmds
+        .spawn(ActionBundle::new("jump", "Jump", player_set))
         .insert((
-            JumpAction,
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/right/input/a/click")
@@ -56,51 +68,69 @@ fn setup(mut cmds: Commands) {
                 GamepadBinding::new(GamepadBindingSource::South).button_just_pressed(),
             ),
             BoolActionValue::default(),
-        ));
+        ))
+        .id();
     let left_hand = cmds.spawn((SpatialBundle::default(), HandLeft)).id();
 
     let right_hand = cmds.spawn((SpatialBundle::default(), HandRight)).id();
-    cmds.spawn(ActionBundle::new(
-        "hand_left_pose",
-        "Left Hand Pose",
-        pose_set,
-    ))
-    .insert((
-        MoveAction,
-        OxrActionBlueprint::default()
-            .interaction_profile(OCULUS_TOUCH_PROFILE)
-            .binding("/user/hand/left/input/grip/pose")
-            .end(),
-        AttachSpaceToEntity(left_hand),
-        SpaceActionValue::default(),
-    ));
-    cmds.spawn(ActionBundle::new(
-        "hand_right_pose",
-        "Right Hand Pose",
-        pose_set,
-    ))
-    .insert((
-        MoveAction,
-        OxrActionBlueprint::default()
-            .interaction_profile(OCULUS_TOUCH_PROFILE)
-            .binding("/user/hand/right/input/aim/pose")
-            .end(),
-        AttachSpaceToEntity(right_hand),
-        SpaceActionValue::default(),
-    ));
+    let left_pose = cmds
+        .spawn(ActionBundle::new(
+            "hand_left_pose",
+            "Left Hand Pose",
+            pose_set,
+        ))
+        .insert((
+            OxrActionBlueprint::default()
+                .interaction_profile(OCULUS_TOUCH_PROFILE)
+                .binding("/user/hand/left/input/grip/pose")
+                .end(),
+            AttachSpaceToEntity(left_hand),
+            SpaceActionValue::default(),
+        ))
+        .id();
+    let right_pose = cmds
+        .spawn(ActionBundle::new(
+            "hand_right_pose",
+            "Right Hand Pose",
+            pose_set,
+        ))
+        .insert((
+            OxrActionBlueprint::default()
+                .interaction_profile(OCULUS_TOUCH_PROFILE)
+                .binding("/user/hand/right/input/aim/pose")
+                .end(),
+            AttachSpaceToEntity(right_hand),
+            SpaceActionValue::default(),
+        ))
+        .id();
+    cmds.insert_resource(MoveActions {
+        set: player_set,
+        move_action,
+        look,
+        jump,
+    });
+    cmds.insert_resource(CoreActions {
+        set: pose_set,
+        left_pose,
+        right_pose,
+    });
 }
 
 fn run(
-    move_action: Query<&Vec2ActionValue, With<MoveAction>>,
-    look_action: Query<&F32ActionValue, With<LookAction>>,
-    jump_action: Query<&BoolActionValue, With<JumpAction>>,
+    move_actions: Res<MoveActions>,
+    vec2_value: Query<&Vec2ActionValue>,
+    f32_value: Query<&F32ActionValue>,
+    bool_value: Query<&BoolActionValue>,
     left_hand: Query<&GlobalTransform, With<HandLeft>>,
     right_hand: Query<&GlobalTransform, With<HandRight>>,
     mut gizmos: Gizmos,
 ) {
-    info!("move: {}", move_action.single().any);
-    info!("look: {}", look_action.single().any);
-    info!("jump: {}", jump_action.single().any);
+    info!(
+        "move: {}",
+        vec2_value.get(move_actions.move_action).unwrap().any
+    );
+    info!("look: {}", f32_value.get(move_actions.look).unwrap().any);
+    info!("jump: {}", bool_value.get(move_actions.jump).unwrap().any);
     for hand in left_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
         gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);
