@@ -8,6 +8,8 @@ use schminput::{
     InputAxisDirection, LocalizedActionSetName,
 };
 
+#[cfg(feature = "xr")]
+use crate::xr_utils::RestartXrSession;
 use crate::{
     config::{LoadSchminputConfig, SaveSchminputConfig},
     default_bindings::ResetToDefautlBindings,
@@ -16,6 +18,8 @@ use crate::{
         RequestGamepadRebinding, RequestKeyboardRebinding, RequestMouseRebinding, WaitingForInput,
     },
 };
+#[cfg(feature = "xr")]
+use bevy_mod_openxr::resources::OxrInstance;
 
 const DELETE_CHAR: char = '🗙';
 fn get_delete_text() -> RichText {
@@ -54,6 +58,7 @@ mod macros {
 #[derive(Component)]
 pub struct PlaceholderComponent;
 
+#[cfg(not(feature = "xr"))]
 pub type ActionQueryData<'a> = (
     Entity,
     Option<&'a mut KeyboardBindings>,
@@ -61,6 +66,17 @@ pub type ActionQueryData<'a> = (
     Option<&'a mut GamepadBindings>,
     Option<&'a mut GamepadHapticOutputBindings>,
     Option<&'a mut PlaceholderComponent>,
+    &'a LocalizedActionName,
+    Has<BoolActionValue>,
+);
+#[cfg(feature = "xr")]
+pub type ActionQueryData<'a> = (
+    Entity,
+    Option<&'a mut KeyboardBindings>,
+    Option<&'a mut MouseBindings>,
+    Option<&'a mut GamepadBindings>,
+    Option<&'a mut GamepadHapticOutputBindings>,
+    Option<&'a mut OxrActionBlueprint>,
     &'a LocalizedActionName,
     Has<BoolActionValue>,
 );
@@ -77,6 +93,8 @@ pub fn draw_rebinding_ui(
     mut reset_bindings: EventWriter<ResetToDefautlBindings>,
     mut request_save: EventWriter<SaveSchminputConfig>,
     mut request_load: EventWriter<LoadSchminputConfig>,
+    #[cfg(feature = "xr")] mut request_session_restart: EventWriter<RestartXrSession>,
+    #[cfg(feature = "xr")] instance: Res<OxrInstance>,
 ) {
     if waiting.waiting() {
         ui.heading("Waiting for input");
@@ -266,6 +284,9 @@ pub fn draw_rebinding_ui(
                                 );
                             }
                         }
+                        if let Some(blueprint) = xr_blueprint {
+                            collapsable!(ui, entity, "OpenXR Bindings:", {}, |ui| {})
+                        }
                     })
                     .header_response
                     .on_hover_text(format!("Action Type: {}", action_type));
@@ -280,6 +301,10 @@ pub fn draw_rebinding_ui(
     }
     if ui.button("Load All Bindings").clicked() {
         request_load.send_default();
+    }
+    #[cfg(feature = "xr")]
+    if ui.button("Restart Xr Session").clicked() {
+        request_session_restart.send_default();
     }
 }
 

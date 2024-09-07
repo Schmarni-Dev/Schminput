@@ -38,10 +38,12 @@ members = ["schminput_rebinding"]
 
 [workspace.dependencies]
 bevy = { version = "0.14", default-features = false }
-# bevy_mod_openxr = { version = "0.1.0-rc1" }
-# bevy_mod_xr = { version = "0.1.0-rc1" }
-bevy_mod_openxr = { git = "https://github.com/awtterpip/bevy_oxr" }
-bevy_mod_xr = { git = "https://github.com/awtterpip/bevy_oxr" }
+bevy_mod_openxr = { path = "../bevy_oxr/crates/bevy_openxr" }
+bevy_mod_xr = { path = "../bevy_oxr/crates/bevy_xr" }
+# bevy_mod_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "fix-destruction" }
+# bevy_mod_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "fix-destruction" }
+# bevy_mod_openxr = { git = "https://github.com/awtterpip/bevy_oxr" }
+# bevy_mod_xr = { git = "https://github.com/awtterpip/bevy_oxr" }
 openxr = { version = "0.18", default-features = false }
 
 [dev-dependencies]

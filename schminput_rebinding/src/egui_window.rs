@@ -1,5 +1,9 @@
+#[cfg(feature = "xr")]
+use crate::xr_utils::RestartXrSession;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
+#[cfg(feature = "xr")]
+use bevy_mod_openxr::resources::OxrInstance;
 use schminput::prelude::*;
 
 use crate::{
@@ -37,6 +41,8 @@ fn draw_ui(
     gamepad_rebind: EventWriter<RequestGamepadRebinding>,
     request_save: EventWriter<SaveSchminputConfig>,
     request_load: EventWriter<LoadSchminputConfig>,
+    #[cfg(feature = "xr")] request_session_restart: EventWriter<RestartXrSession>,
+    #[cfg(feature = "xr")] instance: Res<OxrInstance>,
 ) {
     egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
         crate::egui::draw_rebinding_ui(
@@ -51,6 +57,10 @@ fn draw_ui(
             reset_bindings,
             request_save,
             request_load,
+            #[cfg(feature = "xr")]
+            request_session_restart,
+            #[cfg(feature = "xr")]
+            instance,
         );
     });
 }

@@ -4,7 +4,7 @@ use bevy::{prelude::*, utils::HashMap};
 use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
-    action_set_syncing::OxrActionSetSyncSet,
+    action_set_syncing::{OxrActionSetSyncSet, OxrSyncActionSet},
     helper_traits::ToVec2 as _,
     resources::OxrInstance,
     session::OxrSession,
@@ -18,9 +18,7 @@ use bevy_mod_xr::{
 
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
-    subaction_paths::{
-        RequestedSubactionPaths, SubactionPathCreated, SubactionPathMap, SubactionPathStr,
-    },
+    subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathStr},
     ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
@@ -43,19 +41,43 @@ impl Plugin for OxrInputPlugin {
                 .in_set(SchminputSet::SyncInputActions)
                 .before(OxrSpaceSyncSet),
         );
-        app.add_systems(XrSessionCreated, attach_action_sets);
-        app.add_systems(OxrSendActionBindings, suggest_bindings);
-        // TODO: make this runnable at multiple points if possible?
         app.add_systems(
-            PostStartup,
-            (insert_xr_subaction_paths, create_input_actions)
-                .chain()
-                .run_if(session_available),
+            XrSessionCreated,
+            (create_input_actions, attach_action_sets).chain(),
         );
-        // might be incorrect?
+        app.add_systems(OxrSendActionBindings, suggest_bindings);
+        app.add_systems(
+            PreUpdate,
+            insert_xr_subaction_paths.run_if(session_available),
+        );
         app.add_systems(XrPreSessionEnd, reset_space_values);
+        app.add_systems(XrPreSessionEnd, clean_actions);
+        app.add_systems(XrPreSessionEnd, clean_action_sets);
+        app.add_systems(XrPreSessionEnd, test);
     }
 }
+
+fn test(query: Query<Entity, With<XrSpace>>, mut cmds: Commands) {
+    for e in &query {
+        cmds.entity(e).remove::<XrSpace>();
+    }
+}
+
+fn clean_action_sets(query: Query<Entity, With<OxrActionSet>>, mut cmds: Commands) {
+    for e in &query {
+        cmds.entity(e).remove::<OxrActionSet>();
+    }
+}
+fn clean_actions(query: Query<Entity, With<OxrAction>>, mut cmds: Commands) {
+    for e in &query {
+        cmds.entity(e)
+            .remove::<OxrAction>()
+            .remove::<BindingsSuggested>();
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Component)]
+struct NonOxrSubationPath;
 
 fn attach_spaces_to_target_entities(
     query: Query<(&AttachSpaceToEntity, &SpaceActionValue)>,
@@ -64,13 +86,14 @@ fn attach_spaces_to_target_entities(
 ) {
     for (target, value) in query.iter() {
         let Some(space) = value.any else {
-            debug!("no space to attach to entity");
+            info!("no space to attach to entity");
             continue;
         };
         if !check_query
             .get(target.0)
             .expect("target entity should exist")
         {
+            info!("attaching space!");
             cmds.entity(target.0).insert(space);
         }
     }
@@ -90,22 +113,20 @@ pub struct IsOxrSubactionPath;
 pub struct OxrSubactionPath(pub openxr::Path);
 
 fn insert_xr_subaction_paths(
-    query: Query<&SubactionPathStr>,
+    query: Query<
+        (Entity, &SubactionPathStr),
+        (Without<IsOxrSubactionPath>, Without<NonOxrSubationPath>),
+    >,
     mut cmds: Commands,
-    mut event: EventReader<SubactionPathCreated>,
     instance: Res<OxrInstance>,
 ) {
-    for e in event.read() {
-        let Ok(path) = query.get(e.0 .0) else {
-            error!("Invalid SubactionPath Entity: {:#?}", e.0 .0);
-            continue;
-        };
+    for (e, path) in &query {
         if let Some(xr_path) = path.0.strip_prefix("/oxr") {
-            cmds.entity(*e.0).insert(IsOxrSubactionPath);
+            cmds.entity(e).insert(IsOxrSubactionPath);
             if xr_path.is_empty() || xr_path == "/*" {
                 continue;
             }
-            cmds.entity(*e.0)
+            cmds.entity(e)
                 .insert(OxrSubactionPath(match instance.string_to_path(xr_path) {
                     Ok(v) => v,
                     Err(err) => {
@@ -113,20 +134,25 @@ fn insert_xr_subaction_paths(
                         continue;
                     }
                 }));
+        } else {
+            cmds.entity(e).insert(NonOxrSubationPath);
         }
     }
 }
 
-fn sync_action_sets(query: Query<(&OxrActionSet, &ActionSetEnabled)>, session: Res<OxrSession>) {
+fn sync_action_sets(
+    query: Query<(&OxrActionSet, &ActionSetEnabled)>,
+    mut sync_set: EventWriter<OxrSyncActionSet>,
+) {
     let sets = query
         .iter()
         .filter(|(_, v)| v.0)
-        .map(|(set, _)| openxr::ActiveActionSet::new(set))
-        .collect::<Vec<_>>();
-    let result = session.sync_actions(&sets);
-    if let Err(err) = result {
-        warn!("Unable to sync action sets: {}", err.to_string())
-    }
+        .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
+    sync_set.send_batch(sets);
+    // let result = session.sync_actions(sets);
+    // if let Err(err) = result {
+    //     warn!("Unable to sync action sets: {}", err.to_string())
+    // }
 }
 
 fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
@@ -253,7 +279,6 @@ fn sync_input_actions(
     modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
     time: Res<Time>,
 ) {
-    // );
     for (
         mut action,
         mut bool_val,
@@ -404,6 +429,8 @@ fn sync_input_actions(
             }
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
+
+        info!("finnished action value read");
     }
 }
 

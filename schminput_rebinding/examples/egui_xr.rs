@@ -120,11 +120,11 @@ fn run(
     info!("jump: {}", jump_action.single().any);
     for hand in left_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);
+        gizmos.sphere(pos, rot, 0.01, css::ORANGE_RED);
     }
     for hand in right_hand.into_iter() {
         let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::LIMEGREEN);
+        gizmos.sphere(pos, rot, 0.01, css::LIMEGREEN);
     }
 }
 
