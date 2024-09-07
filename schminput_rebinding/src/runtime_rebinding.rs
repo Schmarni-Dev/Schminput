@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use bevy::{
     input::{
         gamepad::{GamepadAxisChangedEvent, GamepadButtonInput},
@@ -7,11 +9,26 @@ use bevy::{
     },
     prelude::*,
 };
+#[cfg(feature = "xr")]
+use schminput::openxr::OxrActionBlueprint;
 use schminput::{
     gamepad::{GamepadBinding, GamepadBindingSource, GamepadBindings},
     keyboard::KeyboardBindings,
     mouse::{MouseBindings, MouseButtonBinding, MouseMotionBinding},
 };
+#[cfg(feature = "xr")]
+#[derive(Event)]
+pub enum RequestOpenXrRebinding {
+    DeleteBinding {
+        binding_index: usize,
+        profile: Cow<'static, str>,
+        action: Entity,
+    },
+    DeleteProfile {
+        profile: Cow<'static, str>,
+        action: Entity,
+    },
+}
 
 #[derive(Resource)]
 enum PendingKeyboardRebinding {
@@ -111,6 +128,10 @@ impl Plugin for RuntimeRebindingPlugin {
         app.add_event::<RequestKeyboardRebinding>();
         app.add_event::<RequestMouseRebinding>();
         app.add_event::<RequestGamepadRebinding>();
+        #[cfg(feature = "xr")]
+        {
+            app.add_event::<RequestOpenXrRebinding>();
+        }
         app.add_systems(PostUpdate, handle_keyboard_request);
         app.add_systems(PostUpdate, handle_mouse_request);
         app.add_systems(PostUpdate, handle_gamepad_request);
@@ -126,6 +147,37 @@ impl Plugin for RuntimeRebindingPlugin {
             PreUpdate,
             handle_gamepad_rebinding.run_if(resource_exists::<PendingGamepadRebinding>),
         );
+        #[cfg(feature = "xr")]
+        {
+            app.add_systems(PostUpdate, handle_openxr_request);
+        }
+    }
+}
+#[cfg(feature = "xr")]
+fn handle_openxr_request(
+    mut event: EventReader<RequestOpenXrRebinding>,
+    mut action_query: Query<&mut OxrActionBlueprint>,
+) {
+    match event.read().next() {
+        Some(RequestOpenXrRebinding::DeleteBinding {
+            profile,
+            binding_index,
+            action,
+        }) => {
+            let Ok(mut v) = action_query.get_mut(*action) else {
+                return;
+            };
+            if let Some(bindings) = v.bindings.get_mut(profile) {
+                bindings.remove(*binding_index);
+            }
+        }
+        Some(RequestOpenXrRebinding::DeleteProfile { profile, action }) => {
+            let Ok(mut v) = action_query.get_mut(*action) else {
+                return;
+            };
+            v.bindings.remove(profile);
+        }
+        None => {}
     }
 }
 

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use bevy::prelude::*;
 use bevy_egui::egui::{
     self, collapsing_header::CollapsingState, CollapsingHeader, Color32, DragValue, Id, RichText,
@@ -9,6 +11,8 @@ use schminput::{
 };
 
 #[cfg(feature = "xr")]
+use crate::runtime_rebinding::RequestOpenXrRebinding;
+#[cfg(feature = "xr")]
 use crate::xr_utils::RestartXrSession;
 use crate::{
     config::{LoadSchminputConfig, SaveSchminputConfig},
@@ -19,7 +23,7 @@ use crate::{
     },
 };
 #[cfg(feature = "xr")]
-use bevy_mod_openxr::resources::OxrInstance;
+use bevy_mod_openxr::session::OxrSession;
 
 const DELETE_CHAR: char = '🗙';
 fn get_delete_text() -> RichText {
@@ -94,7 +98,8 @@ pub fn draw_rebinding_ui(
     mut request_save: EventWriter<SaveSchminputConfig>,
     mut request_load: EventWriter<LoadSchminputConfig>,
     #[cfg(feature = "xr")] mut request_session_restart: EventWriter<RestartXrSession>,
-    #[cfg(feature = "xr")] instance: Res<OxrInstance>,
+    #[cfg(feature = "xr")] session: Option<Res<OxrSession>>,
+    #[cfg(feature = "xr")] mut openxr_rebind: EventWriter<RequestOpenXrRebinding>,
 ) {
     if waiting.waiting() {
         ui.heading("Waiting for input");
@@ -284,8 +289,29 @@ pub fn draw_rebinding_ui(
                                 );
                             }
                         }
-                        if let Some(blueprint) = xr_blueprint {
-                            collapsable!(ui, entity, "OpenXR Bindings:", {}, |ui| {})
+                        if let Some(mut blueprint) = xr_blueprint {
+                            collapsable!(
+                                ui,
+                                entity,
+                                "OpenXR Bindings:",
+                                {
+                                    // blueprint.bindings.entry("".into()).or_default();
+                                },
+                                |ui| {
+                                    for (index, (profile, bindings)) in
+                                        blueprint.bindings.iter_mut().enumerate()
+                                    {
+                                        draw_openxr_interaction_profile(
+                                            ui,
+                                            profile,
+                                            bindings,
+                                            entity,
+                                            index,
+                                            &mut openxr_rebind,
+                                        )
+                                    }
+                                }
+                            )
                         }
                     })
                     .header_response
@@ -306,6 +332,49 @@ pub fn draw_rebinding_ui(
     if ui.button("Restart Xr Session").clicked() {
         request_session_restart.send_default();
     }
+}
+
+#[cfg(feature = "xr")]
+pub fn draw_openxr_interaction_profile(
+    ui: &mut Ui,
+    profile: &Cow<'static, str>,
+    bindings: &mut [Cow<'static, str>],
+    action: Entity,
+    interaction_profile_index: usize,
+    request: &mut EventWriter<RequestOpenXrRebinding>,
+) {
+    CollapsingState::load_with_default_open(
+        ui.ctx(),
+        Id::new(BindingIdHash {
+            binding_index: interaction_profile_index,
+            action,
+            id: "interaction profile bindings",
+        }),
+        false,
+    )
+    .show_header(ui, |ui: &mut Ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(&**profile));
+            if ui.button(get_delete_text()).clicked() {
+                request.send(RequestOpenXrRebinding::DeleteProfile {
+                    profile: profile.clone(),
+                    action,
+                });
+            }
+        });
+    })
+    .body(|ui| {
+        for (binding_index, binding) in bindings.iter_mut().enumerate() {
+            ui.text_edit_singleline(binding);
+            if ui.button(get_delete_text()).clicked() {
+                request.send(RequestOpenXrRebinding::DeleteBinding {
+                    profile: profile.clone(),
+                    binding_index,
+                    action,
+                });
+            }
+        }
+    });
 }
 
 pub fn draw_gamepad_binding(

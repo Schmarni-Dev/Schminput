@@ -93,7 +93,6 @@ fn attach_spaces_to_target_entities(
             .get(target.0)
             .expect("target entity should exist")
         {
-            info!("attaching space!");
             cmds.entity(target.0).insert(space);
         }
     }
@@ -430,7 +429,6 @@ fn sync_input_actions(
             OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
 
-        info!("finnished action value read");
     }
 }
 
