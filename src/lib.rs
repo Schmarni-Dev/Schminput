@@ -2,7 +2,7 @@ pub mod binding_modification;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
-#[cfg(feature = "xr")]
+#[cfg(all(feature = "xr", not(target_family = "wasm")))]
 pub mod openxr;
 pub mod prelude;
 pub mod subaction_paths;
@@ -109,9 +109,9 @@ impl PluginGroup for DefaultSchminputPlugins {
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
-        #[cfg(feature = "xr")]
+        #[cfg(all(feature = "xr", not(target_family = "wasm")))]
         return p.add(openxr::OxrInputPlugin);
-        #[cfg(not(feature = "xr"))]
+        #[cfg(any(not(feature = "xr"), target_family = "wasm"))]
         return p;
     }
 }

@@ -4,7 +4,7 @@ pub use crate::gamepad::{
 };
 pub use crate::keyboard::{KeyboardBinding, KeyboardBindings};
 pub use crate::mouse::{MouseBindings, MouseButtonBinding, MouseMotionBinding, MouseMotionType};
-#[cfg(feature = "xr")]
+#[cfg(all(feature = "xr", not(target_family = "wasm")))]
 pub use crate::openxr::{
     AttachSpaceToEntity, OxrActionBlueprint, SpaceActionValue, META_TOUCH_PLUS_PROFILE,
     META_TOUCH_PRO_PROFILE, OCULUS_TOUCH_PROFILE,

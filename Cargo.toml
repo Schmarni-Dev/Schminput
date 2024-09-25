@@ -29,9 +29,11 @@ xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]
 bevy.workspace = true
-bevy_mod_openxr = { workspace = true, optional = true }
 bevy_mod_xr = { workspace = true, optional = true }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
 openxr = { workspace = true, optional = true }
+bevy_mod_openxr = { workspace = true, optional = true }
 
 [workspace]
 members = ["schminput_rebinding"]

@@ -802,6 +802,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_openxr"
 version = "0.1.0-rc1"
+source = "git+https://github.com/awtterpip/bevy_oxr#cb3ba5496a47dcc743c319da4c7872cc2db02f0f"
 dependencies = [
  "ash",
  "bevy",
@@ -819,6 +820,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_xr"
 version = "0.1.0-rc1"
+source = "git+https://github.com/awtterpip/bevy_oxr#cb3ba5496a47dcc743c319da4c7872cc2db02f0f"
 dependencies = [
  "bevy",
 ]
