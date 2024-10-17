@@ -55,10 +55,12 @@ pub struct FinnishedSchminputConfigSerialization {
     pub output: String,
 }
 
-#[cfg(feature = "xr")]
-type OxrBindings<'a> = &'a OxrActionBlueprint;
+#[cfg(all(feature = "xr", target_family = "wasm"))]
+type XrBindings = ();
+#[cfg(all(feature = "xr", not(target_family = "wasm")))]
+type XrBindings<'a> = &'a OxrActionBlueprint;
 #[cfg(not(feature = "xr"))]
-type OxrBindings = ();
+type XrBindings = ();
 
 fn serialize_v1(
     mut request: EventReader<SerializeSchminputConfig>,
@@ -68,7 +70,7 @@ fn serialize_v1(
         Option<&MouseBindings>,
         Option<&GamepadBindings>,
         Option<&GamepadHapticOutputBindings>,
-        Option<OxrBindings>,
+        Option<XrBindings>,
         &ActionName,
     )>,
     set_query: Query<(&ActionSetName, &ActionsInSet)>,
@@ -172,7 +174,7 @@ fn serialize_v1(
                     bindings_list.fmt();
                     doc_bindings["gamepad_haptics"] = toml_edit::value(bindings_list);
                 }
-                #[cfg(feature = "xr")]
+                #[cfg(all(feature = "xr", not(target_family = "wasm")))]
                 if let Some(openxr) = openxr {
                     let mut table = toml_edit::Table::new();
                     for (interaction_profile, bindings) in openxr.bindings.iter() {
@@ -250,9 +252,14 @@ fn deserialize_v1(
                 let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
                 #[cfg_attr(not(feature = "xr"), allow(unused_variables), allow(unused_mut))]
                 let mut xr_bindings;
-                #[cfg(feature = "xr")]
+                #[cfg(all(feature = "xr", not(target_family = "wasm")))]
                 {
                     xr_bindings = OxrActionBlueprint::default();
+                }
+                #[allow(unused_assignments)]
+                #[cfg(all(feature = "xr", target_family = "wasm"))]
+                {
+                    xr_bindings = ();
                 }
                 #[allow(unused_assignments)]
                 #[cfg(not(feature = "xr"))]
@@ -360,7 +367,7 @@ fn deserialize_v1(
                         }
                     }
                 }
-                #[cfg(feature = "xr")]
+                #[cfg(all(feature = "xr", not(target_family = "wasm")))]
                 {
                     xr_bindings = parse_openxr(bindings, name, action_name, xr_bindings);
                 }
@@ -371,7 +378,7 @@ fn deserialize_v1(
                     gamepad_bindings,
                     gamepad_haptics_bindings,
                 ));
-                #[cfg(feature = "xr")]
+                #[cfg(all(feature = "xr", not(target_family = "wasm")))]
                 {
                     e_cmds.insert(xr_bindings);
                 }
@@ -380,7 +387,7 @@ fn deserialize_v1(
         respone.send(FinnishedSchminputConfigDeserialization);
     }
 }
-#[cfg(feature = "xr")]
+#[cfg(all(feature = "xr", not(target_family = "wasm")))]
 fn parse_openxr(
     bindings: &toml_edit::Table,
     name: &str,

@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use bevy::{prelude::*, utils::HashMap};
+#[cfg(not(target_family = "wasm"))]
 use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
     action_set_attaching::OxrAttachActionSet,
@@ -19,6 +20,7 @@ use bevy_mod_xr::{
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathStr},
+    xr::{AttachSpaceToEntity, SpaceActionValue},
     ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
@@ -28,7 +30,10 @@ pub const META_TOUCH_PRO_PROFILE: &str = "/interaction_profiles/facebook/touch_c
 pub const META_TOUCH_PLUS_PROFILE: &str = "/interaction_profiles/meta/touch_controller_plus";
 
 impl Plugin for OxrInputPlugin {
+    #[cfg(not(target_family = "wasm"))]
     fn build(&self, app: &mut App) {
+        use crate::xr::attach_spaces_to_target_entities;
+
         app.add_systems(
             PreUpdate,
             (
@@ -50,17 +55,20 @@ impl Plugin for OxrInputPlugin {
             PreUpdate,
             insert_xr_subaction_paths.run_if(session_available),
         );
-        app.add_systems(XrPreSessionEnd, reset_space_values);
         app.add_systems(XrPreSessionEnd, clean_actions);
         app.add_systems(XrPreSessionEnd, clean_action_sets);
     }
+    #[cfg(all(feature = "xr", target_family = "wasm"))]
+    fn build(&self, _app: &mut App) {}
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn clean_action_sets(query: Query<Entity, With<OxrActionSet>>, mut cmds: Commands) {
     for e in &query {
         cmds.entity(e).remove::<OxrActionSet>();
     }
 }
+#[cfg(not(target_family = "wasm"))]
 fn clean_actions(query: Query<Entity, With<OxrAction>>, mut cmds: Commands) {
     for e in &query {
         cmds.entity(e)
@@ -69,41 +77,19 @@ fn clean_actions(query: Query<Entity, With<OxrAction>>, mut cmds: Commands) {
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Component)]
 struct NonOxrSubationPath;
 
-fn attach_spaces_to_target_entities(
-    query: Query<(&AttachSpaceToEntity, &SpaceActionValue)>,
-    check_query: Query<Has<XrSpace>>,
-    mut cmds: Commands,
-) {
-    for (target, value) in query.iter() {
-        let Some(space) = value.any else {
-            info!("no space to attach to entity");
-            continue;
-        };
-        if !check_query
-            .get(target.0)
-            .expect("target entity should exist")
-        {
-            cmds.entity(target.0).insert(space);
-        }
-    }
-}
-
-fn reset_space_values(mut query: Query<&mut SpaceActionValue>) {
-    for mut s in query.iter_mut() {
-        s.any = None;
-        s.paths.clear();
-    }
-}
-
+#[cfg(not(target_family = "wasm"))]
 #[derive(Component, Clone)]
 pub struct IsOxrSubactionPath;
 
+#[cfg(not(target_family = "wasm"))]
 #[derive(Component, Clone)]
 pub struct OxrSubactionPath(pub openxr::Path);
 
+#[cfg(not(target_family = "wasm"))]
 fn insert_xr_subaction_paths(
     query: Query<
         (Entity, &SubactionPathStr),
@@ -132,6 +118,7 @@ fn insert_xr_subaction_paths(
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn sync_action_sets(
     query: Query<(&OxrActionSet, &ActionSetEnabled)>,
     mut sync_set: EventWriter<OxrSyncActionSet>,
@@ -147,12 +134,14 @@ fn sync_action_sets(
     // }
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
     for set in &query {
         suggest.send(OxrAttachActionSet(set.0.clone()));
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 fn suggest_bindings(
     query: Query<(&OxrActionBlueprint, &OxrAction, Entity), Without<BindingsSuggested>>,
     mut suggest: EventWriter<OxrSuggestActionBinding>,
@@ -170,6 +159,7 @@ fn suggest_bindings(
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[allow(clippy::type_complexity)]
 fn create_input_actions(
     mut cmds: Commands,
@@ -254,6 +244,7 @@ fn create_input_actions(
     }
 }
 
+#[cfg(not(target_family = "wasm"))]
 #[allow(clippy::type_complexity)]
 fn sync_input_actions(
     session: Res<OxrSession>,
@@ -424,9 +415,6 @@ fn sync_input_actions(
     }
 }
 
-#[derive(Component, DerefMut, Deref, Clone, Copy)]
-pub struct AttachSpaceToEntity(pub Entity);
-
 #[derive(Component, Default, Clone)]
 pub struct OxrActionBlueprint {
     pub bindings: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
@@ -463,9 +451,7 @@ impl OxrActionDeviceBindingBuilder {
     }
 }
 
-#[derive(Component, DerefMut, Deref, Clone, Default)]
-pub struct SpaceActionValue(pub SubactionPathMap<Option<XrSpace>>);
-
+#[cfg(not(target_family = "wasm"))]
 #[derive(Component)]
 pub enum OxrAction {
     Bool(openxr::Action<bool>),
@@ -475,6 +461,7 @@ pub enum OxrAction {
     Haptic(openxr::Action<openxr::Haptic>),
 }
 
+#[cfg(not(target_family = "wasm"))]
 impl OxrAction {
     fn as_raw(&self) -> openxr::sys::Action {
         match self {
@@ -490,6 +477,7 @@ impl OxrAction {
 #[derive(Clone, Copy, Component)]
 pub struct BindingsSuggested;
 
+#[cfg(not(target_family = "wasm"))]
 #[derive(Component, Deref)]
 pub struct OxrActionSet(pub openxr::ActionSet);
 

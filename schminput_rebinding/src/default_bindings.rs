@@ -24,22 +24,22 @@ impl Plugin for RebindingDefaultBindingsPlugin {
         app.add_systems(PostUpdate, reset_bindings);
     }
 }
+#[cfg(all(feature = "xr", target_family = "wasm"))]
+type XrBindings = ();
+#[cfg(all(feature = "xr", not(target_family = "wasm")))]
+type XrBindings<'a> = &'a OxrActionBlueprint;
+#[cfg(not(feature = "xr"))]
+type XrBindings = ();
 
 fn reset_bindings(
     mut event: EventReader<ResetToDefautlBindings>,
     mut cmds: Commands,
     query: Query<(Entity, &DefaultBindings)>,
-    #[cfg(not(feature = "xr"))] default_bindings_query: Query<(
+    default_bindings_query: Query<(
         Option<&KeyboardBindings>,
         Option<&GamepadBindings>,
         Option<&MouseBindings>,
-        Option<()>,
-    )>,
-    #[cfg(feature = "xr")] default_bindings_query: Query<(
-        Option<&KeyboardBindings>,
-        Option<&GamepadBindings>,
-        Option<&MouseBindings>,
-        Option<&OxrActionBlueprint>,
+        Option<XrBindings>,
     )>,
 ) {
     for event in event.read().copied() {
@@ -115,19 +115,12 @@ fn reset_bindings(
 }
 
 fn copy_default_bindings(
-    #[cfg(not(feature = "xr"))] query: Query<(
+    query: Query<(
         Entity,
         Option<&KeyboardBindings>,
         Option<&GamepadBindings>,
         Option<&MouseBindings>,
-        Option<()>,
-    )>,
-    #[cfg(feature = "xr")] query: Query<(
-        Entity,
-        Option<&KeyboardBindings>,
-        Option<&GamepadBindings>,
-        Option<&MouseBindings>,
-        Option<&OxrActionBlueprint>,
+        Option<XrBindings>,
     )>,
     mut cmds: Commands,
 ) {

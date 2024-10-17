@@ -2,10 +2,12 @@ pub mod binding_modification;
 pub mod gamepad;
 pub mod keyboard;
 pub mod mouse;
-#[cfg(all(feature = "xr", not(target_family = "wasm")))]
+#[cfg(feature = "xr")]
 pub mod openxr;
 pub mod prelude;
 pub mod subaction_paths;
+#[cfg(feature = "xr")]
+pub mod xr;
 
 use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
