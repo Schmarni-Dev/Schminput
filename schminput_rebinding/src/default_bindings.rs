@@ -24,9 +24,7 @@ impl Plugin for RebindingDefaultBindingsPlugin {
         app.add_systems(PostUpdate, reset_bindings);
     }
 }
-#[cfg(all(feature = "xr", target_family = "wasm"))]
-type XrBindings = ();
-#[cfg(all(feature = "xr", not(target_family = "wasm")))]
+#[cfg(feature = "xr")]
 type XrBindings<'a> = &'a OxrActionBlueprint;
 #[cfg(not(feature = "xr"))]
 type XrBindings = ();

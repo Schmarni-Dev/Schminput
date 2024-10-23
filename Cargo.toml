@@ -40,8 +40,8 @@ members = ["schminput_rebinding"]
 
 [workspace.dependencies]
 bevy = { version = "0.14", default-features = false }
-bevy_mod_openxr = { git = "https://github.com/awtterpip/bevy_oxr" }
-bevy_mod_xr = { git = "https://github.com/awtterpip/bevy_oxr" }
+bevy_mod_openxr = "0.1.0-rc2"
+bevy_mod_xr = "0.1.0-rc2"
 openxr = { version = "0.18", default-features = false }
 
 [dev-dependencies]

@@ -1,3 +1,4 @@
+#[cfg(feature = "xr")]
 use std::borrow::Cow;
 
 use bevy::prelude::*;
@@ -107,6 +108,7 @@ pub fn draw_rebinding_ui(
             .default_open(true)
             .show(ui, |ui| {
                 let mut iter = action_query.iter_many_mut(actions.0.iter());
+                #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
                 while let Some((
                     entity,
                     keyboard,
@@ -286,6 +288,7 @@ pub fn draw_rebinding_ui(
                                 );
                             }
                         }
+                        #[cfg(feature = "xr")]
                         if let Some(mut blueprint) = xr_blueprint {
                             collapsable!(
                                 ui,

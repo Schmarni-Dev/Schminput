@@ -11,16 +11,17 @@ use bevy_mod_openxr::{
     session::OxrSession,
     spaces::OxrSpaceSyncSet,
 };
+#[cfg(not(target_family = "wasm"))]
 use bevy_mod_xr::{
     session::{session_available, session_running, XrPreSessionEnd, XrSessionCreated},
-    spaces::XrSpace,
     types::XrPose,
 };
 
+#[cfg(not(target_family = "wasm"))]
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
-    subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathStr},
-    xr::{AttachSpaceToEntity, SpaceActionValue},
+    subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
+    xr::SpaceActionValue,
     ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
