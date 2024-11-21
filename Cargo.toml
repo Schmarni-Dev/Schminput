@@ -13,6 +13,13 @@ version = "0.1.0-rc2"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
 
+[workspace.dependencies]
+schminput = { path = ".", version = "0.1.0-rc2" }
+bevy = { version = "0.14", default-features = false }
+bevy_mod_openxr = "0.1.0-rc2"
+bevy_mod_xr = "0.1.0-rc2"
+openxr = { version = "0.18", default-features = false }
+
 [lints.clippy]
 too_many_arguments = "allow"
 type_complexity = "allow"
@@ -35,12 +42,6 @@ bevy_mod_openxr = { workspace = true, optional = true }
 
 [workspace]
 members = ["schminput_rebinding"]
-
-[workspace.dependencies]
-bevy = { version = "0.14", default-features = false }
-bevy_mod_openxr = "0.1.0-rc2"
-bevy_mod_xr = "0.1.0-rc2"
-openxr = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 bevy_mod_openxr = { workspace = true, default-features = true }
