@@ -1,7 +1,9 @@
 # Schminput
-An Action Based Input Manager for bevy
+Adds support for rebinding input actions to Schminput.
+Supports in App guis and user accessible config files.
 
-designed with [bevy_mod_openxr](https://github.com/awtterpip/bevy_oxr) in mind
+has full support for openxr and
+also ships an example egui gui when using the `egui` feature
 
 ## License
 

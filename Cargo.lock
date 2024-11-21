@@ -3423,7 +3423,7 @@ dependencies = [
 
 [[package]]
 name = "schminput"
-version = "0.1.0-rc1.1"
+version = "0.1.0-rc2"
 dependencies = [
  "bevy",
  "bevy_mod_openxr",
@@ -3433,7 +3433,7 @@ dependencies = [
 
 [[package]]
 name = "schminput_rebinding"
-version = "0.1.0-rc1.1"
+version = "0.1.0-rc2"
 dependencies = [
  "bevy",
  "bevy_egui",

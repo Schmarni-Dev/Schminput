@@ -4,8 +4,8 @@ license.workspace = true
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
-description.workspace = true
-keywords.workspace = true
+description = "Input Rebinding for Schminput"
+keywords = ["input", "action", "schminput", "rebinding"]
 
 [lints.clippy]
 too_many_arguments = "allow"
@@ -19,7 +19,7 @@ name = "egui_xr"
 required-features = ["egui", "xr"]
 
 [features]
-default = ["egui"]
+default = []
 xr = ["dep:bevy_mod_xr", "schminput/xr"]
 egui = ["dep:bevy_egui"]
 
@@ -32,5 +32,8 @@ toml_edit = { version = "0.22.20", features = ["serde"] }
 dirs = "5.0.1"
 
 [dev-dependencies]
-bevy_egui = { version = "0.30.0", features = ["render", "default_fonts"], default-features = false}
+bevy_egui = { version = "0.30.0", features = [
+	"render",
+	"default_fonts",
+], default-features = false }
 bevy = { workspace = true, default-features = true }
