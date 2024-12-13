@@ -779,9 +779,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_mod_openxr"
-version = "0.1.0-rc2"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b9f0c7c2924f5e094736fb84b92cfa254e7f377c1bb414892180814970a2f464"
+checksum = "47f0a0ae242d3cff50c2de547d38fc97b01d540e3f38766d3e4c3be59c418543"
 dependencies = [
  "ash",
  "bevy",
@@ -798,9 +798,9 @@ dependencies = [
 
 [[package]]
 name = "bevy_mod_xr"
-version = "0.1.0-rc2"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b69dfb1294214294081499efed4162b76a1fee6d7fa0d598f1632ee7cf6da009"
+checksum = "1d8da24c08809a6e24b3c2772d381d0c56fce3de3cf39230ac065412a449c46c"
 dependencies = [
  "bevy",
 ]
@@ -3423,7 +3423,7 @@ dependencies = [
 
 [[package]]
 name = "schminput"
-version = "0.1.0-rc2"
+version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_mod_openxr",
@@ -3433,7 +3433,7 @@ dependencies = [
 
 [[package]]
 name = "schminput_rebinding"
-version = "0.1.0-rc2"
+version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_egui",

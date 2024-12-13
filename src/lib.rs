@@ -111,6 +111,8 @@ impl PluginGroup for DefaultSchminputPlugins {
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
+        #[cfg(feature = "xr")]
+        let p = p.add(xr::GenericXrInputPlugin);
         #[cfg(all(feature = "xr", not(target_family = "wasm")))]
         return p.add(openxr::OxrInputPlugin);
         #[cfg(any(not(feature = "xr"), target_family = "wasm"))]
