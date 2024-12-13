@@ -11,16 +11,17 @@ use bevy_mod_openxr::{
     session::OxrSession,
     spaces::OxrSpaceSyncSet,
 };
+#[cfg(not(target_family = "wasm"))]
 use bevy_mod_xr::{
-    session::{session_available, session_running, XrPreSessionEnd, XrSessionCreated},
-    spaces::XrSpace,
+    session::{XrPreSessionEnd, XrSessionCreated},
     types::XrPose,
 };
 
+#[cfg(not(target_family = "wasm"))]
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
-    subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathStr},
-    xr::{AttachSpaceToEntity, SpaceActionValue},
+    subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
+    xr::SpaceActionValue,
     ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
     LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
 };
@@ -33,6 +34,7 @@ impl Plugin for OxrInputPlugin {
     #[cfg(not(target_family = "wasm"))]
     fn build(&self, app: &mut App) {
         use crate::xr::attach_spaces_to_target_entities;
+        use bevy_mod_openxr::{openxr_session_available, openxr_session_running};
 
         app.add_systems(
             PreUpdate,
@@ -42,18 +44,20 @@ impl Plugin for OxrInputPlugin {
                 attach_spaces_to_target_entities,
             )
                 .chain()
-                .run_if(session_running)
+                .run_if(openxr_session_running)
                 .in_set(SchminputSet::SyncInputActions)
                 .before(OxrSpaceSyncSet),
         );
         app.add_systems(
             XrSessionCreated,
-            (create_input_actions, attach_action_sets).chain(),
+            (create_input_actions, attach_action_sets)
+                .chain()
+                .run_if(openxr_session_available),
         );
         app.add_systems(OxrSendActionBindings, suggest_bindings);
         app.add_systems(
             PreUpdate,
-            insert_xr_subaction_paths.run_if(session_available),
+            insert_xr_subaction_paths.run_if(openxr_session_available),
         );
         app.add_systems(XrPreSessionEnd, clean_actions);
         app.add_systems(XrPreSessionEnd, clean_action_sets);

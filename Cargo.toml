@@ -4,16 +4,21 @@ license.workspace = true
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
-description.workspace = true
-keywords.workspace = true
+description = "An Action Based Input Manager for Bevy"
+keywords = ["bevy", "input", "vr", "xr", "action"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
-version = "0.1.0-rc1.1"
+version = "0.1.0-rc2"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
-description = "An Action Based Input Manager for Bevy"
-keywords = ["bevy", "input", "vr", "xr", "action"]
+
+[workspace.dependencies]
+schminput = { path = ".", version = "0.1.0-rc2" }
+bevy = { version = "0.14", default-features = false }
+bevy_mod_openxr = "0.1.0-rc2"
+bevy_mod_xr = "0.1.0-rc2"
+openxr = { version = "0.18", default-features = false }
 
 [lints.clippy]
 too_many_arguments = "allow"
@@ -24,7 +29,7 @@ name = "xr"
 required-features = ["xr"]
 
 [features]
-default = ["xr"]
+default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]
@@ -37,12 +42,6 @@ bevy_mod_openxr = { workspace = true, optional = true }
 
 [workspace]
 members = ["schminput_rebinding"]
-
-[workspace.dependencies]
-bevy = { version = "0.14", default-features = false }
-bevy_mod_openxr = { git = "https://github.com/awtterpip/bevy_oxr" }
-bevy_mod_xr = { git = "https://github.com/awtterpip/bevy_oxr" }
-openxr = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 bevy_mod_openxr = { workspace = true, default-features = true }

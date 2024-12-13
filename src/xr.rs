@@ -17,6 +17,7 @@ impl Plugin for GenericXrInputPlugin {
 }
 
 // should this really be pub(crate) instead of pub?
+#[cfg_attr(target_family = "wasm", allow(dead_code))]
 pub(crate) fn attach_spaces_to_target_entities(
     query: Query<(&AttachSpaceToEntity, &SpaceActionValue)>,
     check_query: Query<Has<XrSpace>>,
