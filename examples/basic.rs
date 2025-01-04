@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use bevy::prelude::Camera3dBundle;
 use bevy::prelude::*;
 use schminput::prelude::*;
 
@@ -79,7 +78,7 @@ fn setup(mut cmds: Commands) {
         GamepadHapticOutput::default(),
         GamepadHapticOutputBindings::default().weak(),
     ));
-    cmds.spawn(Camera3dBundle::default());
+    cmds.spawn(Camera3d::default());
 }
 
 fn run(

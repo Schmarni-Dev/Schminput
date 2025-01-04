@@ -70,9 +70,9 @@ fn setup(mut cmds: Commands) {
             BoolActionValue::default(),
         ))
         .id();
-    let left_hand = cmds.spawn((SpatialBundle::default(), HandLeft)).id();
+    let left_hand = cmds.spawn(HandLeft).id();
 
-    let right_hand = cmds.spawn((SpatialBundle::default(), HandRight)).id();
+    let right_hand = cmds.spawn(HandRight).id();
     let left_pose = cmds
         .spawn(ActionBundle::new(
             "hand_left_pose",
@@ -132,12 +132,12 @@ fn run(
     info!("look: {}", f32_value.get(move_actions.look).unwrap().any);
     info!("jump: {}", bool_value.get(move_actions.jump).unwrap().any);
     for hand in left_hand.into_iter() {
-        let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);
+        let pose = hand.to_isometry();
+        gizmos.sphere(pose, 0.1, css::ORANGE_RED);
     }
     for hand in right_hand.into_iter() {
-        let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::LIMEGREEN);
+        let pose = hand.to_isometry();
+        gizmos.sphere(pose, 0.1, css::LIMEGREEN);
     }
 }
 
@@ -147,16 +147,14 @@ fn setup_env(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(2.5)).mesh()),
-        material: materials.add(StandardMaterial::from(Color::srgb(0.3, 0.5, 0.3))),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(2.5)).mesh())),
+        MeshMaterial3d(materials.add(StandardMaterial::from(Color::srgb(0.3, 0.5, 0.3)))),
+    ));
     // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1)))),
-        material: materials.add(StandardMaterial::from(Color::srgb(0.8, 0.7, 0.6))),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1))))),
+        MeshMaterial3d(materials.add(StandardMaterial::from(Color::srgb(0.8, 0.7, 0.6)))),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+    ));
 }
