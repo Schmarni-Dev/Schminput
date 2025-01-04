@@ -12,10 +12,7 @@ use bevy_mod_openxr::{
     spaces::OxrSpaceSyncSet,
 };
 #[cfg(not(target_family = "wasm"))]
-use bevy_mod_xr::{
-    session::{XrPreSessionEnd, XrSessionCreated},
-    types::XrPose,
-};
+use bevy_mod_xr::session::{XrPreSessionEnd, XrSessionCreated};
 
 #[cfg(not(target_family = "wasm"))]
 use crate::{
@@ -132,10 +129,6 @@ fn sync_action_sets(
         .filter(|(_, v)| v.0)
         .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
     sync_set.send_batch(sets);
-    // let result = session.sync_actions(sets);
-    // if let Err(err) = result {
-    //     warn!("Unable to sync action sets: {}", err.to_string())
-    // }
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -294,7 +287,7 @@ fn sync_input_actions(
             pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
         }
         let delta_multiplier = match pre_mul_delta_time {
-            true => time.delta_seconds(),
+            true => time.delta_secs(),
             false => 1.0,
         };
         match action.as_mut() {
@@ -382,7 +375,7 @@ fn sync_input_actions(
                         match session.create_action_space(
                             action,
                             openxr::Path::NULL,
-                            XrPose::IDENTITY,
+                            Isometry3d::IDENTITY,
                         ) {
                             Ok(s) => {
                                 val.replace(s);
@@ -399,7 +392,7 @@ fn sync_input_actions(
                             .and_then(|v| v.as_ref())
                             .is_none()
                         {
-                            match session.create_action_space(action, path, XrPose::IDENTITY) {
+                            match session.create_action_space(action, path, Isometry3d::IDENTITY) {
                                 Ok(s) => {
                                     val.set_value_for_path(sub_path, Some(s));
                                 }

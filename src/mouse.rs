@@ -98,7 +98,7 @@ pub fn sync_actions(
                 .map(|(e, _)| *e);
 
             let delta_mutiplier = match pre_mul_delta_time {
-                true => time.delta_seconds(),
+                true => time.delta_secs(),
                 false => 1.0,
             };
             if let Some(boolean) = bool_value.as_mut() {

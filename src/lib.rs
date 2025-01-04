@@ -11,7 +11,7 @@ pub mod xr;
 
 use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
-use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
+use bevy::{app::PluginGroupBuilder, ecs::entity::EntityHashSet, prelude::*};
 use binding_modification::BindingModifiactions;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
@@ -44,9 +44,9 @@ impl Plugin for SchminputPlugin {
         app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
-        app.observe(on_add_in_action_set);
+        app.add_observer(on_add_in_action_set);
 
-        app.observe(
+        app.add_observer(
             |trigger: Trigger<OnRemove, InActionSet>,
              mut set_query: Query<&mut ActionsInSet>,
              action_query: Query<&InActionSet>| {
@@ -125,7 +125,7 @@ impl PluginGroup for DefaultSchminputPlugins {
 pub struct InActionSet(pub Entity);
 
 #[derive(Debug, Clone, Component, Reflect, Deref, Default)]
-pub struct ActionsInSet(pub EntityHashSet<Entity>);
+pub struct ActionsInSet(pub EntityHashSet);
 
 /// The Display name of the Action Set.
 #[derive(Debug, Clone, Component, Reflect, Deref)]

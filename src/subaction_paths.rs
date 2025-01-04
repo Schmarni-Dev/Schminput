@@ -1,7 +1,5 @@
-use bevy::{
-    prelude::*,
-    utils::{CowArc, EntityHash, EntityHashMap, HashMap},
-};
+use atomicow::CowArc;
+use bevy::{ecs::entity::EntityHash, prelude::*, utils::hashbrown::HashMap};
 
 use crate::SchminputSet;
 
@@ -65,7 +63,7 @@ pub struct RequestedSubactionPaths(pub Vec<SubactionPath>);
 
 #[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, DerefMut, Default)]
 pub struct SubactionPathMap<T: Sized + Default> {
-    pub paths: EntityHashMap<SubactionPath, T>,
+    pub paths: HashMap<SubactionPath, T, EntityHash>,
     #[deref]
     pub any: T,
 }
