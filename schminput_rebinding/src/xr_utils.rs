@@ -7,7 +7,7 @@ impl Plugin for SchmebindingXrUtilsPlugin {
         app.add_event::<RestartXrSession>();
         app.add_systems(
             PostUpdate,
-            on_restart_event.run_if(on_event::<RestartXrSession>()),
+            on_restart_event.run_if(on_event::<RestartXrSession>),
         );
         app.add_systems(XrPreDestroySession, |v: Option<ResMut<ShouldRestart>>| {
             if let Some(mut v) = v {

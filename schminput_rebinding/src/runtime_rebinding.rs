@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use bevy::{
     input::{
-        gamepad::{GamepadAxisChangedEvent, GamepadButtonInput},
+        gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent},
         keyboard::KeyboardInput,
         mouse::MouseButtonInput,
         ButtonState,
@@ -223,7 +223,7 @@ fn handle_gamepad_request(
 fn handle_gamepad_rebinding(
     rebinding: Res<PendingGamepadRebinding>,
     mut action_query: Query<Option<&mut GamepadBindings>>,
-    mut button_input: EventReader<GamepadButtonInput>,
+    mut button_input: EventReader<GamepadButtonChangedEvent>,
     mut axis_input: EventReader<GamepadAxisChangedEvent>,
     mut cmds: Commands,
     mut waiting: ResMut<WaitingForInput>,
@@ -245,7 +245,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
-                binding.source = GamepadBindingSource::from_button_type(&input.button.button_type);
+                binding.source = GamepadBindingSource::from_button_type(&input.button);
             }
             PendingGamepadRebinding::New { action } => {
                 let Ok(bindings) = action_query.get_mut(action) else {
@@ -254,12 +254,12 @@ fn handle_gamepad_rebinding(
                 };
                 match bindings {
                     Some(mut bindings) => bindings.bindings.push(GamepadBinding::new(
-                        GamepadBindingSource::from_button_type(&input.button.button_type),
+                        GamepadBindingSource::from_button_type(&input.button),
                     )),
                     None => {
                         cmds.entity(action)
                             .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
-                                GamepadBindingSource::from_button_type(&input.button.button_type),
+                                GamepadBindingSource::from_button_type(&input.button),
                             )));
                     }
                 }
@@ -286,7 +286,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
-                binding.source = GamepadBindingSource::from_axis_type(&input.axis_type);
+                binding.source = GamepadBindingSource::from_axis_type(&input.axis);
             }
             PendingGamepadRebinding::New { action } => {
                 let Ok(bindings) = action_query.get_mut(action) else {
@@ -295,12 +295,12 @@ fn handle_gamepad_rebinding(
                 };
                 match bindings {
                     Some(mut bindings) => bindings.bindings.push(GamepadBinding::new(
-                        GamepadBindingSource::from_axis_type(&input.axis_type),
+                        GamepadBindingSource::from_axis_type(&input.axis),
                     )),
                     None => {
                         cmds.entity(action)
                             .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
-                                GamepadBindingSource::from_axis_type(&input.axis_type),
+                                GamepadBindingSource::from_axis_type(&input.axis),
                             )));
                     }
                 }

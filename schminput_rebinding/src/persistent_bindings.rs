@@ -21,13 +21,13 @@ impl Plugin for PersistentBindingsPlugin {
         app.add_systems(
             PostUpdate,
             serialize_v1
-                .run_if(on_event::<SerializeSchminputConfig>())
+                .run_if(on_event::<SerializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Serialize),
         );
         app.add_systems(
             PostUpdate,
             deserialize_v1
-                .run_if(on_event::<DeserializeSchminputConfig>())
+                .run_if(on_event::<DeserializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Deserialize),
         );
     }
