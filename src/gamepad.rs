@@ -12,8 +12,8 @@ use crate::{
     },
     prelude::RequestedSubactionPaths,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
-    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
-    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct GamepadPlugin;
@@ -152,15 +152,15 @@ fn sync_haptics(
     haptic_query: Query<(
         &GamepadHapticOutputBindings,
         &GamepadHapticOutput,
-        &InActionSet,
+        &Action,
         &RequestedSubactionPaths,
     )>,
     path_query: Query<&GamepadPathSelector>,
-    set_query: Query<&ActionSetEnabled>,
+    set_query: Query<&ActionSet>,
     gamepads: Query<(Entity, &Gamepad, Option<&GamepadIdentifier>)>,
 ) {
-    for (bindings, out, set, sub_paths) in &haptic_query {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+    for (bindings, out, action, sub_paths) in &haptic_query {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
         for binding in bindings.bindings.iter() {
@@ -246,14 +246,14 @@ fn sync_actions(
     gamepads: Query<(Entity, &Gamepad, Option<&GamepadIdentifier>)>,
     mut query: Query<(
         &GamepadBindings,
-        &InActionSet,
+        &Action,
         &RequestedSubactionPaths,
         &BindingModifiactions,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
     )>,
-    set_query: Query<&ActionSetEnabled>,
+    set_query: Query<&ActionSet>,
     path_query: Query<(
         &GamepadPathSelector,
         Option<&GamepadPathTarget>,
@@ -267,7 +267,7 @@ fn sync_actions(
 ) {
     for (
         gamepad_bindings,
-        set,
+        action,
         sub_paths,
         modifications,
         mut bool_value,
@@ -275,7 +275,7 @@ fn sync_actions(
         mut vec2_value,
     ) in &mut query
     {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
 
@@ -714,7 +714,7 @@ impl GamepadBindingSource {
             _ => return None,
         })
     }
-    pub fn from_axis_type(axis: &GamepadAxis) -> GamepadBindingSource {
+    pub fn from_axis(axis: &GamepadAxis) -> GamepadBindingSource {
         match axis {
             GamepadAxis::LeftStickX => GamepadBindingSource::LeftStickX,
             GamepadAxis::LeftStickY => GamepadBindingSource::LeftStickY,
@@ -751,7 +751,7 @@ impl GamepadBindingSource {
             _ => return None,
         })
     }
-    pub fn from_button_type(button: &GamepadButton) -> GamepadBindingSource {
+    pub fn from_button(button: &GamepadButton) -> GamepadBindingSource {
         match button {
             GamepadButton::South => GamepadBindingSource::South,
             GamepadButton::East => GamepadBindingSource::East,

@@ -28,7 +28,7 @@ struct Actions {
 }
 
 fn setup(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
     let thumbstick_path = paths.get_or_create_path("/gamepad/*/thumbstick", &mut cmds);
     let mut modifications = BindingModifiactions::default();
     let modification_entity = cmds.spawn(PremultiplyDeltaTimeSecondsModification).id();
@@ -36,22 +36,22 @@ fn setup(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
         .per_path
         .push((thumbstick_path, BindingModifiaction(modification_entity)));
     let action_1 = cmds
-        .spawn(ActionBundle::new("action_1", "Test Action 1", set))
-        .insert(
+        .spawn((
+            Action::new("action_1", "Test Action 1", set),
             GamepadBindings::default()
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickX).x_axis())
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickY).y_axis()),
-        )
+        ))
         .insert(modifications)
         .insert(Vec2ActionValue::default())
         .id();
     let action_2 = cmds
-        .spawn(ActionBundle::new("action_2", "Test Action 2", set))
-        .insert(
+        .spawn((
+            Action::new("action_2", "Test Action 2", set),
             GamepadBindings::default()
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickX).x_axis())
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickY).y_axis()),
-        )
+        ))
         .insert(Vec2ActionValue::default())
         .id();
     cmds.insert_resource(Actions { action_1, action_2 })

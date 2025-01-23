@@ -4,7 +4,7 @@ use crate::runtime_rebinding::RequestOpenXrRebinding;
 use crate::xr_utils::RestartXrSession;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use schminput::prelude::*;
+use schminput::{prelude::*, ActionsInSet};
 
 use crate::{
     config::{LoadSchminputConfig, SaveSchminputConfig},
@@ -32,7 +32,7 @@ impl Plugin for RebindingEguiWindowPlugin {
 fn draw_ui(
     mut ctxs: EguiContexts,
     mut action_query: Query<ActionQueryData>,
-    set_query: Query<(&LocalizedActionSetName, &ActionsInSet)>,
+    set_query: Query<(&ActionSet, &ActionsInSet)>,
     waiting: Res<WaitingForInput>,
     request_keyboard: EventWriter<RequestKeyboardRebinding>,
     action_type_query: ActionStateQuery,

@@ -19,8 +19,7 @@ use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
     xr::SpaceActionValue,
-    ActionName, ActionSetEnabled, ActionSetName, BoolActionValue, F32ActionValue, InActionSet,
-    LocalizedActionName, LocalizedActionSetName, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, F32ActionValue, SchminputSet, Vec2ActionValue,
 };
 
 pub const OCULUS_TOUCH_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
@@ -121,12 +120,12 @@ fn insert_xr_subaction_paths(
 
 #[cfg(not(target_family = "wasm"))]
 fn sync_action_sets(
-    query: Query<(&OxrActionSet, &ActionSetEnabled)>,
+    query: Query<(&OxrActionSet, &ActionSet)>,
     mut sync_set: EventWriter<OxrSyncActionSet>,
 ) {
     let sets = query
         .iter()
-        .filter(|(_, v)| v.0)
+        .filter(|(_, v)| v.enabled)
         .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
     sync_set.send_batch(sets);
 }
@@ -162,9 +161,7 @@ fn create_input_actions(
     mut cmds: Commands,
     query: Query<(
         Entity,
-        &InActionSet,
-        &ActionName,
-        Option<&LocalizedActionName>,
+        &Action,
         &RequestedSubactionPaths,
         Has<BoolActionValue>,
         Has<Vec2ActionValue>,
@@ -172,31 +169,22 @@ fn create_input_actions(
         Has<SpaceActionValue>,
     )>,
     path_query: Query<&OxrSubactionPath>,
-    action_set_query: Query<(&ActionSetName, Option<&LocalizedActionSetName>)>,
+    action_set_query: Query<&ActionSet>,
     instance: Res<OxrInstance>,
 ) {
     let mut set_map: HashMap<Entity, openxr::ActionSet> = HashMap::new();
-    for (
-        entity,
-        action_set,
-        action_id,
-        action_name,
-        requested_subaction_paths,
-        has_bool,
-        has_vec2,
-        has_f32,
-        has_space,
-    ) in &query
+    for (entity, action, requested_subaction_paths, has_bool, has_vec2, has_f32, has_space) in
+        &query
     {
-        let Ok((set_id, set_name)) = action_set_query.get(action_set.0) else {
+        let Ok(action_set) = action_set_query.get(action.set) else {
             error!("OpenXR action has an invalid Action Set at Setup!");
             continue;
         };
-        let action_name: &str = action_name.map(|v| &v.0).unwrap_or(&action_id.0);
-        let set_name: &str = set_name.map(|v| &v.0).unwrap_or(&set_id.0);
-        let action_set = set_map
-            .entry(action_set.0)
-            .or_insert_with(|| instance.create_action_set(set_id, set_name, 0).unwrap());
+        let action_set = set_map.entry(action.set).or_insert_with(|| {
+            instance
+                .create_action_set(&action_set.name, &action_set.localized_name, 0)
+                .unwrap()
+        });
 
         let paths = requested_subaction_paths
             .iter()
@@ -206,22 +194,22 @@ fn create_input_actions(
         let action = match (has_bool, has_f32, has_vec2, has_space) {
             (true, false, false, false) => OxrAction::Bool(
                 action_set
-                    .create_action(action_id, action_name, &paths)
+                    .create_action(&action.name, &action.localized_name, &paths)
                     .unwrap(),
             ),
             (false, true, false, false) => OxrAction::F32(
                 action_set
-                    .create_action(action_id, action_name, &paths)
+                    .create_action(&action.name, &action.localized_name, &paths)
                     .unwrap(),
             ),
             (false, false, true, false) => OxrAction::Vec2(
                 action_set
-                    .create_action(action_id, action_name, &paths)
+                    .create_action(&action.name, &action.localized_name, &paths)
                     .unwrap(),
             ),
             (false, false, false, true) => OxrAction::Space(
                 action_set
-                    .create_action(action_id, action_name, &paths)
+                    .create_action(&action.name, &action.localized_name, &paths)
                     .unwrap(),
             ),
             (false, false, false, false) => {

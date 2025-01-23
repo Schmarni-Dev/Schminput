@@ -34,11 +34,11 @@ fn main() {
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let player_set = cmds.spawn(ActionSetBundle::new("player", "Player")).id();
-    let pose_set = cmds.spawn(ActionSetBundle::new("pose", "Poses")).id();
+    let player_set = cmds.spawn(ActionSet::new("player", "Player")).id();
+    let pose_set = cmds.spawn(ActionSet::new("pose", "Poses")).id();
     let move_action = cmds
-        .spawn(ActionBundle::new("move", "Move", player_set))
-        .insert((
+        .spawn((
+            Action::new("move", "Move", player_set),
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/left/input/thumbstick")
@@ -47,8 +47,8 @@ fn setup(mut cmds: Commands) {
         ))
         .id();
     let look = cmds
-        .spawn(ActionBundle::new("look", "Look", player_set))
-        .insert((
+        .spawn((
+            Action::new("look", "Look", player_set),
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/right/input/thumbstick/x")
@@ -57,8 +57,8 @@ fn setup(mut cmds: Commands) {
         ))
         .id();
     let jump = cmds
-        .spawn(ActionBundle::new("jump", "Jump", player_set))
-        .insert((
+        .spawn((
+            Action::new("jump", "Jump", player_set),
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/right/input/a/click")
@@ -74,12 +74,8 @@ fn setup(mut cmds: Commands) {
 
     let right_hand = cmds.spawn(HandRight).id();
     let left_pose = cmds
-        .spawn(ActionBundle::new(
-            "hand_left_pose",
-            "Left Hand Pose",
-            pose_set,
-        ))
-        .insert((
+        .spawn((
+            Action::new("hand_left_pose", "Left Hand Pose", pose_set),
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/left/input/grip/pose")
@@ -89,12 +85,8 @@ fn setup(mut cmds: Commands) {
         ))
         .id();
     let right_pose = cmds
-        .spawn(ActionBundle::new(
-            "hand_right_pose",
-            "Right Hand Pose",
-            pose_set,
-        ))
-        .insert((
+        .spawn((
+            Action::new("hand_right_pose", "Right Hand Pose", pose_set),
             OxrActionBlueprint::default()
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/right/input/aim/pose")

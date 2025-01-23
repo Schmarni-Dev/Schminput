@@ -19,16 +19,14 @@ struct Actions {
 }
 
 fn update_action_set(
-    mut state: Local<bool>,
-    query: Query<&BoolActionValue>,
+    action_query: Query<&BoolActionValue>,
+    mut set_query: Query<&mut ActionSet>,
     actions: Res<Actions>,
-    mut cmds: Commands,
 ) {
-    let b = query.get(actions.toggle_movement).unwrap();
+    let b = action_query.get(actions.toggle_movement).unwrap();
     if b.any {
-        *state = !*state;
-        cmds.entity(actions.movement_set)
-            .insert(ActionSetEnabled(!*state));
+        let mut set = set_query.get_mut(actions.movement_set).unwrap();
+        set.enabled = !set.enabled;
     }
 }
 
@@ -38,24 +36,20 @@ fn print_action(action: Res<Actions>, query: Query<&Vec2ActionValue>) {
 }
 
 fn setup_actions(mut cmds: Commands) {
-    let core = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
-    let player_set = cmds.spawn(ActionSetBundle::new("move", "Movement")).id();
+    let core = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let player_set = cmds.spawn(ActionSet::new("move", "Movement")).id();
     let toggle = cmds
-        .spawn(ActionBundle::new(
-            "toggle_movement",
-            "Toggle Movement",
-            core,
-        ))
-        .insert(BoolActionValue::default())
-        .insert(
+        .spawn((
+            Action::new("toggle_movement", "Toggle Movement", core),
+            BoolActionValue::default(),
             KeyboardBindings::default()
                 .add_binding(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
-        )
+        ))
         .id();
     let move_action = cmds
-        .spawn(ActionBundle::new("move", "Move", player_set))
-        .insert(Vec2ActionValue::default())
-        .insert(
+        .spawn((
+            Action::new("move", "Move", player_set),
+            Vec2ActionValue::default(),
             KeyboardBindings::default()
                 .add_binding(KeyboardBinding::new(KeyCode::KeyW).y_axis())
                 .add_binding(
@@ -69,7 +63,7 @@ fn setup_actions(mut cmds: Commands) {
                         .x_axis()
                         .negative_axis_dir(),
                 ),
-        )
+        ))
         .id();
     cmds.insert_resource(Actions {
         core_set: core,

@@ -3,8 +3,8 @@ use bevy::{input::mouse::MouseMotion, prelude::*};
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
-    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct MousePlugin;
@@ -56,24 +56,24 @@ fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &MouseBindings,
-        &InActionSet,
+        &Action,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
         &RequestedSubactionPaths,
         &BindingModifiactions,
     )>,
-    set_query: Query<&ActionSetEnabled>,
+    set_query: Query<&ActionSet>,
     path_query: Query<&MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
     mut delta_motion: EventReader<MouseMotion>,
     modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
-    for (binding, set, mut bool_value, mut f32_value, mut vec2_value, paths, modifications) in
+    for (binding, action, mut bool_value, mut f32_value, mut vec2_value, paths, modifications) in
         &mut action_query
     {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
         let mut pre_mul_delta_time = modifications

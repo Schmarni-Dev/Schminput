@@ -23,10 +23,10 @@ struct JumpAction;
 struct JumpHapticAction;
 
 fn setup(mut cmds: Commands) {
-    let set = cmds.spawn(ActionSetBundle::new("core", "core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "core")).id();
     use schminput::keyboard::KeyboardBinding as KbB;
     cmds.spawn((
-        ActionBundle::new("move", "Move", set),
+        Action::new("move", "Move", set),
         Vec2ActionValue::default(),
         KeyboardBindings::default()
             .add_binding(KbB::new(KeyCode::KeyW).y_axis().positive_axis_dir())
@@ -46,7 +46,8 @@ fn setup(mut cmds: Commands) {
             ),
         MoveAction,
     ));
-    cmds.spawn(ActionBundle::new("look", "Look", set)).insert((
+    cmds.spawn((
+        Action::new("look", "Look", set),
         Vec2ActionValue::default(),
         MouseBindings::default().delta_motion(),
         GamepadBindings::default()
@@ -62,18 +63,15 @@ fn setup(mut cmds: Commands) {
             ),
         LookAction,
     ));
-    cmds.spawn(ActionBundle::new("jump", "Jump", set)).insert((
+    cmds.spawn((
+        Action::new("jump", "Jump", set),
         JumpAction,
         BoolActionValue::default(),
         GamepadBindings::default().add_binding(GamepadBinding::new(GamepadBindingSource::South)),
         KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space)),
     ));
-    cmds.spawn(ActionBundle::new(
-        "jump_haptic",
-        "Jump Haptic Feedback",
-        set,
-    ))
-    .insert((
+    cmds.spawn((
+        Action::new("jump_haptic", "Jump Haptic Feedback", set),
         JumpHapticAction,
         GamepadHapticOutput::default(),
         GamepadHapticOutputBindings::default().weak(),
