@@ -69,7 +69,7 @@ pub type ActionQueryData<'a> = (
     Option<&'a mut GamepadBindings>,
     Option<&'a mut GamepadHapticOutputBindings>,
     Option<&'a mut PlaceholderComponent>,
-    &'a LocalizedActionName,
+    &'a Action,
     Has<BoolActionValue>,
 );
 #[cfg(feature = "xr")]

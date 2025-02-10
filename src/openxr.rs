@@ -180,11 +180,24 @@ fn create_input_actions(
             error!("OpenXR action has an invalid Action Set at Setup!");
             continue;
         };
-        let action_set = set_map.entry(action.set).or_insert_with(|| {
-            instance
-                .create_action_set(&action_set.name, &action_set.localized_name, 0)
-                .unwrap()
-        });
+        let action_set = match set_map.get(&action.set) {
+            Some(v) => v,
+            None => {
+                let set = match instance.create_action_set(
+                    &action_set.name,
+                    &action_set.localized_name,
+                    0,
+                ) {
+                    Ok(v) => v,
+                    Err(err) => {
+                        error!("error while creating action set: {err}");
+                        continue;
+                    }
+                };
+                set_map.insert(action.set, set);
+                set_map.get(&action.set).unwrap()
+            }
+        };
 
         let paths = requested_subaction_paths
             .iter()

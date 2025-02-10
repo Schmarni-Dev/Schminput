@@ -16,9 +16,10 @@ repository = "https://github.com/Schmarni-Dev/Schminput/"
 [workspace.dependencies]
 schminput = { path = ".", version = "0.2.0-dev" }
 bevy = { version = "0.15", default-features = false }
-bevy_mod_xr.git = "https://github.com/awtterpip/bevy_oxr"
-bevy_mod_openxr.git = "https://github.com/awtterpip/bevy_oxr"
-
+# bevy_mod_xr.git = "https://github.com/awtterpip/bevy_oxr"
+# bevy_mod_openxr.git = "https://github.com/awtterpip/bevy_oxr"
+bevy_mod_xr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "session_restart_event" }
+bevy_mod_openxr = { git = "https://github.com/Schmarni-Dev/bevy_openxr", branch = "session_restart_event" }
 openxr = { version = "0.19", default-features = false }
 
 [lints.clippy]
