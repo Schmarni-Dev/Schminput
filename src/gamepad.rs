@@ -529,6 +529,9 @@ impl GamepadHapticOutput {
         self.haptic_feedbacks.any.push(GamepadHapticValue::Stop);
         self
     }
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[derive(Clone, Component, Debug, Reflect, Default)]
@@ -540,6 +543,10 @@ impl GamepadBindings {
     pub fn add_binding(mut self, binding: GamepadBinding) -> Self {
         self.bindings.push(binding);
         self
+    }
+
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

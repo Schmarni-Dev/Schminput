@@ -244,15 +244,15 @@ fn deserialize_v1(
                     error!("unable to find action with name: {}", action_name);
                     continue;
                 };
-                let mut keyboard_bindings = KeyboardBindings::default();
-                let mut mouse_bindings = MouseBindings::default();
-                let mut gamepad_bindings = GamepadBindings::default();
-                let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
+                let mut keyboard_bindings = KeyboardBindings::new();
+                let mut mouse_bindings = MouseBindings::new();
+                let mut gamepad_bindings = GamepadBindings::new();
+                let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::new();
                 #[cfg_attr(not(feature = "xr"), allow(unused_variables), allow(unused_mut))]
                 let mut xr_bindings;
                 #[cfg(feature = "xr")]
                 {
-                    xr_bindings = OxrBindings::default();
+                    xr_bindings = OxrBindings::new();
                 }
                 #[allow(unused_assignments)]
                 #[cfg(not(feature = "xr"))]

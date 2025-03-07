@@ -62,20 +62,20 @@ fn print_action(
 
 fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
     let set = cmds.spawn(ActionSet::new("core", "Core")).id();
-    let mut sub_paths = RequestedSubactionPaths::default();
-    sub_paths.push(paths.get_or_create_path("/mouse/button", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/keyboard", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/dpad", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/trigger/left", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/trigger", &mut cmds));
+    let mut sub_paths = RequestedSubactionPaths::new();
+    sub_paths.push_path("/mouse/button", &mut paths, &mut cmds);
+    sub_paths.push_path("/keyboard", &mut paths, &mut cmds);
+    sub_paths.push_path("/gamepad/*", &mut paths, &mut cmds);
+    sub_paths.push_path("/gamepad/*/dpad", &mut paths, &mut cmds);
+    sub_paths.push_path("/gamepad/*/trigger/left", &mut paths, &mut cmds);
+    sub_paths.push_path("/gamepad/*/trigger", &mut paths, &mut cmds);
     let action = cmds
         .spawn((
             Action::new("action", "Action", set),
-            BoolActionValue::default(),
-            KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)),
-            MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)),
-            GamepadBindings::default()
+            BoolActionValue::new(),
+            KeyboardBindings::new().add_binding(KeyboardBinding::new(KeyCode::Space)),
+            MouseBindings::new().add_binding(MouseButtonBinding::new(MouseButton::Left)),
+            GamepadBindings::new()
                 .add_binding(GamepadBinding::new(GamepadBindingSource::DPadDown))
                 .add_binding(GamepadBinding::new(GamepadBindingSource::South))
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftTrigger))

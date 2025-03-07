@@ -44,32 +44,32 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("move", "Move", player_set),
         MoveAction,
-        OxrBindings::default()
+        OxrBindings::new()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/left/input/thumbstick")
             .end(),
-        Vec2ActionValue::default(),
+        Vec2ActionValue::new(),
     ));
     cmds.spawn((
         Action::new("look", "Look", player_set),
         LookAction,
-        OxrBindings::default()
+        OxrBindings::new()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/thumbstick/x")
             .end(),
-        F32ActionValue::default(),
+        F32ActionValue::new(),
     ));
     cmds.spawn((
         Action::new("jump", "Jump", player_set),
         JumpAction,
-        OxrBindings::default()
+        OxrBindings::new()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/a/click")
             .end(),
-        KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)),
-        GamepadBindings::default()
+        KeyboardBindings::new().add_binding(KeyboardBinding::new(KeyCode::Space)),
+        GamepadBindings::new()
             .add_binding(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
-        BoolActionValue::default(),
+        BoolActionValue::new(),
     ));
     let left_hand = cmds.spawn(HandLeft).id();
 
@@ -77,22 +77,22 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("hand_left_pose", "Left Hand Pose", pose_set),
         MoveAction,
-        OxrBindings::default()
+        OxrBindings::new()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/left/input/grip/pose")
             .end(),
         AttachSpaceToEntity(left_hand),
-        SpaceActionValue::default(),
+        SpaceActionValue::new(),
     ));
     cmds.spawn((
         Action::new("hand_right_pose", "Right Hand Pose", pose_set),
         MoveAction,
-        OxrBindings::default()
+        OxrBindings::new()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/aim/pose")
             .end(),
         AttachSpaceToEntity(right_hand),
-        SpaceActionValue::default(),
+        SpaceActionValue::new(),
     ));
 }
 

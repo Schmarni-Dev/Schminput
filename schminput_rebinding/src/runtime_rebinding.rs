@@ -258,7 +258,7 @@ fn handle_gamepad_rebinding(
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
+                            .insert(GamepadBindings::new().add_binding(GamepadBinding::new(
                                 GamepadBindingSource::from_button(&input.button),
                             )));
                     }
@@ -299,7 +299,7 @@ fn handle_gamepad_rebinding(
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
+                            .insert(GamepadBindings::new().add_binding(GamepadBinding::new(
                                 GamepadBindingSource::from_axis(&input.axis),
                             )));
                     }
@@ -356,7 +356,7 @@ fn handle_mouse_request(
             let Ok(mut v) = action_query.get_mut(action) else {
                 return;
             };
-            v.movement = Some(MouseMotionBinding::default());
+            v.movement = Some(MouseMotionBinding::new());
         }
         None => {}
     }
@@ -398,7 +398,7 @@ fn handle_mouse_rebinding(
                         bindings.buttons.push(MouseButtonBinding::new(input.button))
                     }
                     None => {
-                        let mut bindings = MouseBindings::default();
+                        let mut bindings = MouseBindings::new();
                         bindings.buttons.push(MouseButtonBinding::new(input.button));
                         cmds.entity(action).insert(bindings);
                     }
@@ -485,7 +485,7 @@ fn handle_keyboard_rebinding(
                         .0
                         .push(schminput::keyboard::KeyboardBinding::new(input.key_code)),
                     None => {
-                        let mut bindings = KeyboardBindings::default();
+                        let mut bindings = KeyboardBindings::new();
                         bindings
                             .0
                             .push(schminput::keyboard::KeyboardBinding::new(input.key_code));

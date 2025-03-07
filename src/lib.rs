@@ -170,6 +170,22 @@ pub struct F32ActionValue(pub SubactionPathMap<f32>);
 #[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
 pub struct BoolActionValue(pub SubactionPathMap<bool>);
 
+impl Vec2ActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+impl F32ActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+impl BoolActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 // there might be a better name for this
 /// +X = Right, +Y = Up
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]

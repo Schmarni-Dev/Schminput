@@ -157,6 +157,10 @@ impl KeyboardBindings {
             .add_binding(KeyboardBinding::new(right).x_axis().positive_axis_dir())
             .add_binding(KeyboardBinding::new(left).x_axis().negative_axis_dir())
     }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Reflect)]

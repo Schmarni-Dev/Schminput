@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 use schminput::{
-    binding_modification::{
-        BindingModifiaction, BindingModifiactions, PremultiplyDeltaTimeSecondsModification,
-    },
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     prelude::*,
 };
 fn main() -> AppExit {
@@ -30,29 +28,26 @@ struct Actions {
 fn setup(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
     let set = cmds.spawn(ActionSet::new("core", "Core")).id();
     let thumbstick_path = paths.get_or_create_path("/gamepad/*/thumbstick", &mut cmds);
-    let mut modifications = BindingModifiactions::default();
     let modification_entity = cmds.spawn(PremultiplyDeltaTimeSecondsModification).id();
-    modifications
-        .per_path
-        .push((thumbstick_path, BindingModifiaction(modification_entity)));
     let action_1 = cmds
         .spawn((
             Action::new("action_1", "Test Action 1", set),
-            GamepadBindings::default()
+            GamepadBindings::new()
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickX).x_axis())
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickY).y_axis()),
+            BindingModifiactions::new()
+                .with_path_modification(thumbstick_path, modification_entity),
+            Vec2ActionValue::new(),
         ))
-        .insert(modifications)
-        .insert(Vec2ActionValue::default())
         .id();
     let action_2 = cmds
         .spawn((
             Action::new("action_2", "Test Action 2", set),
-            GamepadBindings::default()
+            GamepadBindings::new()
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickX).x_axis())
                 .add_binding(GamepadBinding::new(GamepadBindingSource::LeftStickY).y_axis()),
+            Vec2ActionValue::new(),
         ))
-        .insert(Vec2ActionValue::default())
         .id();
     cmds.insert_resource(Actions { action_1, action_2 })
 }

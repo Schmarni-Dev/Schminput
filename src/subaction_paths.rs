@@ -61,6 +61,29 @@ pub struct SubactionPath(pub Entity);
 #[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, Default, DerefMut)]
 pub struct RequestedSubactionPaths(pub Vec<SubactionPath>);
 
+impl RequestedSubactionPaths {
+    pub fn with_path(
+        mut self,
+        path: impl Into<CowArc<'static, str>>,
+        paths: &mut SubactionPaths,
+        cmds: &mut Commands,
+    ) -> Self {
+        self.push_path(path, paths, cmds);
+        self
+    }
+    pub fn push_path(
+        &mut self,
+        path: impl Into<CowArc<'static, str>>,
+        paths: &mut SubactionPaths,
+        cmds: &mut Commands,
+    ) {
+        self.push(paths.get_or_create_path(path, cmds));
+    }
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[derive(Debug, Clone, Component, Reflect, PartialEq, Eq, Deref, DerefMut, Default)]
 pub struct SubactionPathMap<T: Sized + Default> {
     pub paths: HashMap<SubactionPath, T, EntityHash>,

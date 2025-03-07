@@ -41,16 +41,16 @@ fn setup_actions(mut cmds: Commands) {
     let toggle = cmds
         .spawn((
             Action::new("toggle_movement", "Toggle Movement", core),
-            BoolActionValue::default(),
-            KeyboardBindings::default()
+            BoolActionValue::new(),
+            KeyboardBindings::new()
                 .add_binding(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
         ))
         .id();
     let move_action = cmds
         .spawn((
             Action::new("move", "Move", player_set),
-            Vec2ActionValue::default(),
-            KeyboardBindings::default()
+            Vec2ActionValue::new(),
+            KeyboardBindings::new()
                 .add_binding(KeyboardBinding::new(KeyCode::KeyW).y_axis())
                 .add_binding(
                     KeyboardBinding::new(KeyCode::KeyS)

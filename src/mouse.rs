@@ -215,6 +215,10 @@ impl MouseBindings {
         self.movement = Some(mmb);
         self
     }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[derive(Clone, Copy, Debug, Reflect)]
@@ -276,6 +280,11 @@ impl Default for MouseMotionBinding {
             motion_type: MouseMotionType::DeltaMotion,
             multiplier: 1.0,
         }
+    }
+}
+impl MouseMotionBinding {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 

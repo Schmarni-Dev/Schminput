@@ -9,6 +9,12 @@ pub struct AttachSpaceToEntity(pub Entity);
 #[derive(Component, DerefMut, Deref, Clone, Default)]
 pub struct SpaceActionValue(pub SubactionPathMap<Option<XrSpace>>);
 
+impl SpaceActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 pub struct GenericXrInputPlugin;
 impl Plugin for GenericXrInputPlugin {
     fn build(&self, app: &mut App) {

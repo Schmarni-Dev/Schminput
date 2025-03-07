@@ -428,6 +428,10 @@ impl OxrBindings {
             curr_interaction_profile: profile.into(),
         }
     }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 pub struct OxrActionDeviceBindingBuilder {
