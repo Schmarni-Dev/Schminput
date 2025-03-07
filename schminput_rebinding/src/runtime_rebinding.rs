@@ -11,7 +11,7 @@ use bevy::{
     prelude::*,
 };
 #[cfg(feature = "xr")]
-use schminput::openxr::OxrActionBlueprint;
+use schminput::openxr::OxrBindings;
 use schminput::{
     gamepad::{GamepadBinding, GamepadBindingSource, GamepadBindings},
     keyboard::KeyboardBindings,
@@ -157,7 +157,7 @@ impl Plugin for RuntimeRebindingPlugin {
 #[cfg(feature = "xr")]
 fn handle_openxr_request(
     mut event: EventReader<RequestOpenXrRebinding>,
-    mut action_query: Query<&mut OxrActionBlueprint>,
+    mut action_query: Query<&mut OxrBindings>,
 ) {
     match event.read().next() {
         Some(RequestOpenXrRebinding::DeleteBinding {

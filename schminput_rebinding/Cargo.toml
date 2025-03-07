@@ -19,7 +19,7 @@ name = "egui_xr"
 required-features = ["egui", "xr"]
 
 [features]
-default = ["xr"]
+default = []
 xr = ["dep:bevy_mod_xr", "schminput/xr"]
 egui = ["dep:bevy_egui"]
 

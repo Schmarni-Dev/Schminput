@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification}, subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr}, Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue
+    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
+    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
+    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 impl Plugin for KeyboardPlugin {
@@ -140,6 +143,19 @@ impl KeyboardBindings {
     pub fn add_binding(mut self, binding: KeyboardBinding) -> Self {
         self.0.push(binding);
         self
+    }
+    /// helper function for adding a dpad style binding, internally this just calls add_binding
+    pub fn add_dpad_binding(
+        self,
+        up: KeyCode,
+        down: KeyCode,
+        left: KeyCode,
+        right: KeyCode,
+    ) -> Self {
+        self.add_binding(KeyboardBinding::new(up).y_axis().positive_axis_dir())
+            .add_binding(KeyboardBinding::new(down).y_axis().negative_axis_dir())
+            .add_binding(KeyboardBinding::new(right).x_axis().positive_axis_dir())
+            .add_binding(KeyboardBinding::new(left).x_axis().negative_axis_dir())
     }
 }
 

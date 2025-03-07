@@ -44,7 +44,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("move", "Move", player_set),
         MoveAction,
-        OxrActionBlueprint::default()
+        OxrBindings::default()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/left/input/thumbstick")
             .end(),
@@ -53,7 +53,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("look", "Look", player_set),
         LookAction,
-        OxrActionBlueprint::default()
+        OxrBindings::default()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/thumbstick/x")
             .end(),
@@ -62,7 +62,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("jump", "Jump", player_set),
         JumpAction,
-        OxrActionBlueprint::default()
+        OxrBindings::default()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/a/click")
             .end(),
@@ -77,7 +77,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("hand_left_pose", "Left Hand Pose", pose_set),
         MoveAction,
-        OxrActionBlueprint::default()
+        OxrBindings::default()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/left/input/grip/pose")
             .end(),
@@ -87,7 +87,7 @@ fn setup(mut cmds: Commands) {
     cmds.spawn((
         Action::new("hand_right_pose", "Right Hand Pose", pose_set),
         MoveAction,
-        OxrActionBlueprint::default()
+        OxrBindings::default()
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/aim/pose")
             .end(),

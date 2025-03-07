@@ -9,12 +9,12 @@ keywords = ["bevy", "input", "vr", "xr", "action"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
-version = "0.2.0-rc1"
+version = "0.2.0-rc2"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
 
 [workspace.dependencies]
-schminput = { path = ".", version = "0.2.0-rc1" }
+schminput = { path = ".", version = "0.2.0-rc2" }
 bevy = { version = "0.15", default-features = false }
 bevy_mod_xr = "0.2.0"
 bevy_mod_openxr = "0.2.0"
@@ -29,7 +29,7 @@ name = "xr"
 required-features = ["xr"]
 
 [features]
-default = ["xr"]
+default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]

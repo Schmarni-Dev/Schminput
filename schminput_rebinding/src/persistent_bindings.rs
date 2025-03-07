@@ -56,7 +56,7 @@ pub struct FinnishedSchminputConfigSerialization {
 }
 
 #[cfg(feature = "xr")]
-type XrBindings<'a> = &'a OxrActionBlueprint;
+type XrBindings<'a> = &'a OxrBindings;
 #[cfg(not(feature = "xr"))]
 type XrBindings = ();
 
@@ -252,7 +252,7 @@ fn deserialize_v1(
                 let mut xr_bindings;
                 #[cfg(feature = "xr")]
                 {
-                    xr_bindings = OxrActionBlueprint::default();
+                    xr_bindings = OxrBindings::default();
                 }
                 #[allow(unused_assignments)]
                 #[cfg(not(feature = "xr"))]
@@ -385,8 +385,8 @@ fn parse_openxr(
     bindings: &toml_edit::Table,
     name: &str,
     action_name: &str,
-    mut xr_bindings: OxrActionBlueprint,
-) -> OxrActionBlueprint {
+    mut xr_bindings: OxrBindings,
+) -> OxrBindings {
     if let Some(openxr) = bindings.get("openxr") {
         let Some(openxr) = openxr.as_table() else {
             error!("{name}.{action_name}.openxr is not a table");

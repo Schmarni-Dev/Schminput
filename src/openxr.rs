@@ -139,12 +139,12 @@ fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrA
 
 #[cfg(not(target_family = "wasm"))]
 fn suggest_bindings(
-    query: Query<(&OxrActionBlueprint, &OxrAction, Entity), Without<BindingsSuggested>>,
+    query: Query<(&OxrBindings, &OxrAction, Entity), Without<BindingsSuggested>>,
     mut suggest: EventWriter<OxrSuggestActionBinding>,
     mut cmds: Commands,
 ) {
-    for (blueprint, action, entity) in &query {
-        for (profile, bindings) in blueprint.bindings.iter() {
+    for (bindings, action, entity) in &query {
+        for (profile, bindings) in bindings.bindings.iter() {
             suggest.send(OxrSuggestActionBinding {
                 action: action.as_raw(),
                 interaction_profile: profile.clone(),
@@ -414,11 +414,11 @@ fn sync_input_actions(
 }
 
 #[derive(Component, Default, Clone)]
-pub struct OxrActionBlueprint {
+pub struct OxrBindings {
     pub bindings: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
 }
 
-impl OxrActionBlueprint {
+impl OxrBindings {
     pub fn interaction_profile(
         self,
         profile: impl Into<Cow<'static, str>>,
@@ -431,7 +431,7 @@ impl OxrActionBlueprint {
 }
 
 pub struct OxrActionDeviceBindingBuilder {
-    builder: OxrActionBlueprint,
+    builder: OxrBindings,
     curr_interaction_profile: Cow<'static, str>,
 }
 impl OxrActionDeviceBindingBuilder {
@@ -444,7 +444,7 @@ impl OxrActionDeviceBindingBuilder {
         self
     }
 
-    pub fn end(self) -> OxrActionBlueprint {
+    pub fn end(self) -> OxrBindings {
         self.builder
     }
 }

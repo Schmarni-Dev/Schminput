@@ -79,7 +79,7 @@ pub type ActionQueryData<'a> = (
     Option<&'a mut MouseBindings>,
     Option<&'a mut GamepadBindings>,
     Option<&'a mut GamepadHapticOutputBindings>,
-    Option<&'a mut OxrActionBlueprint>,
+    Option<&'a mut OxrBindings>,
     &'a Action,
     Has<BoolActionValue>,
 );
@@ -115,7 +115,7 @@ pub fn draw_rebinding_ui(
                     mut mouse,
                     gamepad,
                     gamepad_haptics,
-                    xr_blueprint,
+                    xr_bindings,
                     action,
                     is_bool_action,
                 )) = iter.fetch_next()
@@ -288,7 +288,7 @@ pub fn draw_rebinding_ui(
                             }
                         }
                         #[cfg(feature = "xr")]
-                        if let Some(mut blueprint) = xr_blueprint {
+                        if let Some(mut bindings) = xr_bindings {
                             collapsable!(
                                 ui,
                                 entity,
@@ -298,7 +298,7 @@ pub fn draw_rebinding_ui(
                                 },
                                 |ui| {
                                     for (index, (profile, bindings)) in
-                                        blueprint.bindings.iter_mut().enumerate()
+                                        bindings.bindings.iter_mut().enumerate()
                                     {
                                         draw_openxr_interaction_profile(
                                             ui,
