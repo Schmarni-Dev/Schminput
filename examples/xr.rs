@@ -34,73 +34,53 @@ fn main() {
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let player_set = cmds.spawn(ActionSetBundle::new("player", "Player")).id();
-    let pose_set = cmds.spawn(ActionSetBundle::new("pose", "Poses")).id();
+    let player_set = cmds.spawn(ActionSet::new("player", "Player")).id();
+    let pose_set = cmds.spawn(ActionSet::new("pose", "Poses")).id();
     let move_action = cmds
-        .spawn(ActionBundle::new("move", "Move", player_set))
-        .insert((
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/left/input/thumbstick")
-                .end(),
-            Vec2ActionValue::default(),
+        .spawn((
+            Action::new("move", "Move", player_set),
+            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/thumbstick"]),
+            Vec2ActionValue::new(),
         ))
         .id();
     let look = cmds
-        .spawn(ActionBundle::new("look", "Look", player_set))
-        .insert((
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/right/input/thumbstick/x")
-                .end(),
-            F32ActionValue::default(),
+        .spawn((
+            Action::new("look", "Look", player_set),
+            OxrBindings::new().bindngs(
+                OCULUS_TOUCH_PROFILE,
+                ["/user/hand/right/input/thumbstick/x"],
+            ),
+            F32ActionValue::new(),
         ))
         .id();
     let jump = cmds
-        .spawn(ActionBundle::new("jump", "Jump", player_set))
-        .insert((
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/right/input/a/click")
-                .end(),
-            KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)),
-            GamepadBindings::default().add_binding(
+        .spawn((
+            Action::new("jump", "Jump", player_set),
+            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/a/click"]),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
+            GamepadBindings::new().bind(
                 GamepadBinding::new(GamepadBindingSource::South).button_just_pressed(),
             ),
-            BoolActionValue::default(),
+            BoolActionValue::new(),
         ))
         .id();
-    let left_hand = cmds.spawn((SpatialBundle::default(), HandLeft)).id();
+    let left_hand = cmds.spawn(HandLeft).id();
 
-    let right_hand = cmds.spawn((SpatialBundle::default(), HandRight)).id();
+    let right_hand = cmds.spawn(HandRight).id();
     let left_pose = cmds
-        .spawn(ActionBundle::new(
-            "hand_left_pose",
-            "Left Hand Pose",
-            pose_set,
-        ))
-        .insert((
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/left/input/grip/pose")
-                .end(),
+        .spawn((
+            Action::new("hand_left_pose", "Left Hand Pose", pose_set),
+            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/grip/pose"]),
             AttachSpaceToEntity(left_hand),
-            SpaceActionValue::default(),
+            SpaceActionValue::new(),
         ))
         .id();
     let right_pose = cmds
-        .spawn(ActionBundle::new(
-            "hand_right_pose",
-            "Right Hand Pose",
-            pose_set,
-        ))
-        .insert((
-            OxrActionBlueprint::default()
-                .interaction_profile(OCULUS_TOUCH_PROFILE)
-                .binding("/user/hand/right/input/aim/pose")
-                .end(),
+        .spawn((
+            Action::new("hand_right_pose", "Right Hand Pose", pose_set),
+            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/aim/pose"]),
             AttachSpaceToEntity(right_hand),
-            SpaceActionValue::default(),
+            SpaceActionValue::new(),
         ))
         .id();
     cmds.insert_resource(MoveActions {
@@ -132,12 +112,12 @@ fn run(
     info!("look: {}", f32_value.get(move_actions.look).unwrap().any);
     info!("jump: {}", bool_value.get(move_actions.jump).unwrap().any);
     for hand in left_hand.into_iter() {
-        let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::ORANGE_RED);
+        let pose = hand.to_isometry();
+        gizmos.sphere(pose, 0.1, css::ORANGE_RED);
     }
     for hand in right_hand.into_iter() {
-        let (_, rot, pos) = hand.to_scale_rotation_translation();
-        gizmos.sphere(pos, rot, 0.1, css::LIMEGREEN);
+        let pose = hand.to_isometry();
+        gizmos.sphere(pose, 0.1, css::LIMEGREEN);
     }
 }
 
@@ -147,16 +127,14 @@ fn setup_env(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(2.5)).mesh()),
-        material: materials.add(StandardMaterial::from(Color::srgb(0.3, 0.5, 0.3))),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::new(Vec3::Y, Vec2::splat(2.5)).mesh())),
+        MeshMaterial3d(materials.add(StandardMaterial::from(Color::srgb(0.3, 0.5, 0.3)))),
+    ));
     // cube
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1)))),
-        material: materials.add(StandardMaterial::from(Color::srgb(0.8, 0.7, 0.6))),
-        transform: Transform::from_xyz(0.0, 0.5, 0.0),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(meshes.add(Mesh::from(Cuboid::from_size(Vec3::splat(0.1))))),
+        MeshMaterial3d(materials.add(StandardMaterial::from(Color::srgb(0.8, 0.7, 0.6)))),
+        Transform::from_xyz(0.0, 0.5, 0.0),
+    ));
 }

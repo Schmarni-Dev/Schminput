@@ -7,8 +7,8 @@ use bevy_egui::egui::{
     Ui,
 };
 use schminput::{
-    gamepad::GamepadHapticType, prelude::*, ActionsInSet, ButtonInputBeheavior, InputAxis,
-    InputAxisDirection, LocalizedActionSetName,
+    gamepad::GamepadHapticType, prelude::*, ActionsInSet, ButtonInputBeheavior,
+    InputAxis, InputAxisDirection,
 };
 
 #[cfg(feature = "xr")]
@@ -69,7 +69,7 @@ pub type ActionQueryData<'a> = (
     Option<&'a mut GamepadBindings>,
     Option<&'a mut GamepadHapticOutputBindings>,
     Option<&'a mut PlaceholderComponent>,
-    &'a LocalizedActionName,
+    &'a Action,
     Has<BoolActionValue>,
 );
 #[cfg(feature = "xr")]
@@ -79,8 +79,8 @@ pub type ActionQueryData<'a> = (
     Option<&'a mut MouseBindings>,
     Option<&'a mut GamepadBindings>,
     Option<&'a mut GamepadHapticOutputBindings>,
-    Option<&'a mut OxrActionBlueprint>,
-    &'a LocalizedActionName,
+    Option<&'a mut OxrBindings>,
+    &'a Action,
     Has<BoolActionValue>,
 );
 
@@ -88,7 +88,7 @@ pub fn draw_rebinding_ui(
     ui: &mut Ui,
     action_query: &mut Query<ActionQueryData>,
     action_type_query: &ActionStateQuery,
-    set_query: &Query<(&LocalizedActionSetName, &ActionsInSet)>,
+    set_query: &Query<(&ActionSet, &ActionsInSet)>,
     waiting: &WaitingForInput,
     mut request_keyboard: EventWriter<RequestKeyboardRebinding>,
     mut mouse_rebind: EventWriter<RequestMouseRebinding>,
@@ -103,8 +103,8 @@ pub fn draw_rebinding_ui(
         ui.heading("Waiting for input");
         return;
     }
-    for (localized_set_name, actions) in set_query.iter() {
-        CollapsingHeader::new(&***localized_set_name)
+    for (action_set, actions) in set_query.iter() {
+        CollapsingHeader::new(&*action_set.localized_name)
             .default_open(true)
             .show(ui, |ui| {
                 let mut iter = action_query.iter_many_mut(actions.0.iter());
@@ -115,14 +115,13 @@ pub fn draw_rebinding_ui(
                     mut mouse,
                     gamepad,
                     gamepad_haptics,
-                    xr_blueprint,
-                    localized_name,
+                    xr_bindings,
+                    action,
                     is_bool_action,
                 )) = iter.fetch_next()
                 {
                     let action_type = ActionType::from_query(action_type_query, entity);
-                    // idk what i am even derefing too
-                    ui.collapsing(&***localized_name, |ui| {
+                    ui.collapsing(&*action.localized_name, |ui| {
                         if action_type != ActionType::GamepadHaptic {
                             collapsable!(
                                 ui,
@@ -289,7 +288,7 @@ pub fn draw_rebinding_ui(
                             }
                         }
                         #[cfg(feature = "xr")]
-                        if let Some(mut blueprint) = xr_blueprint {
+                        if let Some(mut bindings) = xr_bindings {
                             collapsable!(
                                 ui,
                                 entity,
@@ -299,7 +298,7 @@ pub fn draw_rebinding_ui(
                                 },
                                 |ui| {
                                     for (index, (profile, bindings)) in
-                                        blueprint.bindings.iter_mut().enumerate()
+                                        bindings.bindings.iter_mut().enumerate()
                                     {
                                         draw_openxr_interaction_profile(
                                             ui,

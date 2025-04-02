@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use schminput::prelude::*;
+use schminput::{prelude::*, ActionsInSet};
 use toml_edit::{value, DocumentMut, Item, TableLike, Value};
 
 use crate::str_converstions::*;
@@ -21,13 +21,13 @@ impl Plugin for PersistentBindingsPlugin {
         app.add_systems(
             PostUpdate,
             serialize_v1
-                .run_if(on_event::<SerializeSchminputConfig>())
+                .run_if(on_event::<SerializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Serialize),
         );
         app.add_systems(
             PostUpdate,
             deserialize_v1
-                .run_if(on_event::<DeserializeSchminputConfig>())
+                .run_if(on_event::<DeserializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Deserialize),
         );
     }
@@ -56,7 +56,7 @@ pub struct FinnishedSchminputConfigSerialization {
 }
 
 #[cfg(feature = "xr")]
-type XrBindings<'a> = &'a OxrActionBlueprint;
+type XrBindings<'a> = &'a OxrBindings;
 #[cfg(not(feature = "xr"))]
 type XrBindings = ();
 
@@ -69,9 +69,9 @@ fn serialize_v1(
         Option<&GamepadBindings>,
         Option<&GamepadHapticOutputBindings>,
         Option<XrBindings>,
-        &ActionName,
+        &Action,
     )>,
-    set_query: Query<(&ActionSetName, &ActionsInSet)>,
+    set_query: Query<(&ActionSet, &ActionsInSet)>,
 ) {
     for request in request.read() {
         let mut owned_doc = match request.base_config.parse::<DocumentMut>() {
@@ -83,18 +83,18 @@ fn serialize_v1(
         };
         let doc = &mut owned_doc;
         doc.entry("version").or_insert(toml_edit::value(1i64));
-        for (set_name, actions) in &set_query {
+        for (action_set, actions) in &set_query {
             let mut iter = action_query.iter_many_mut(actions.0.iter());
             #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
-            while let Some((keyboard, mouse, gamepad, gamepad_haptics, openxr, name)) =
+            while let Some((keyboard, mouse, gamepad, gamepad_haptics, openxr, action)) =
                 iter.fetch_next()
             {
                 let doc_bindings = doc
-                    .entry(&set_name.0)
+                    .entry(&action_set.name)
                     .or_insert(implicit_table())
                     .as_table_mut()
                     .unwrap()
-                    .entry(&name.0)
+                    .entry(&action.name)
                     .or_insert(toml_edit::table());
                 if let Some(keyboard) = keyboard {
                     let mut bindings_list = toml_edit::Array::new();
@@ -196,8 +196,8 @@ fn serialize_v1(
 fn deserialize_v1(
     mut request: EventReader<DeserializeSchminputConfig>,
     mut respone: EventWriter<FinnishedSchminputConfigDeserialization>,
-    mut action_query: Query<(Entity, &ActionName)>,
-    set_query: Query<(&ActionSetName, &ActionsInSet)>,
+    mut action_query: Query<(Entity, &Action)>,
+    set_query: Query<(&ActionSet, &ActionsInSet)>,
     mut cmds: Commands,
 ) {
     for request in request.read() {
@@ -222,7 +222,7 @@ fn deserialize_v1(
             }
 
             let Some((_set_name, actions)) =
-                set_query.iter().find(|(set_name, _)| set_name.0 == name)
+                set_query.iter().find(|(action_set, _)| action_set.name == name)
             else {
                 error!("unable to find actionset with name: {}", name);
                 continue;
@@ -238,21 +238,21 @@ fn deserialize_v1(
                 };
                 let Some(action_entity) = action_query
                     .iter_many_mut(actions.0.iter())
-                    .find(|(_, n)| n.0 == action_name)
+                    .find(|(_, action)| action.name == action_name)
                     .map(|(e, _)| e)
                 else {
                     error!("unable to find action with name: {}", action_name);
                     continue;
                 };
-                let mut keyboard_bindings = KeyboardBindings::default();
-                let mut mouse_bindings = MouseBindings::default();
-                let mut gamepad_bindings = GamepadBindings::default();
-                let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::default();
+                let mut keyboard_bindings = KeyboardBindings::new();
+                let mut mouse_bindings = MouseBindings::new();
+                let mut gamepad_bindings = GamepadBindings::new();
+                let mut gamepad_haptics_bindings = GamepadHapticOutputBindings::new();
                 #[cfg_attr(not(feature = "xr"), allow(unused_variables), allow(unused_mut))]
                 let mut xr_bindings;
                 #[cfg(feature = "xr")]
                 {
-                    xr_bindings = OxrActionBlueprint::default();
+                    xr_bindings = OxrBindings::new();
                 }
                 #[allow(unused_assignments)]
                 #[cfg(not(feature = "xr"))]
@@ -325,7 +325,7 @@ fn deserialize_v1(
                                 };
                                 w
                             };
-                            gamepad_bindings = gamepad_bindings.add_binding(GamepadBinding {
+                            gamepad_bindings = gamepad_bindings.bind(GamepadBinding {
                                 source,
                                 button_behavior: behavior,
                                 axis,
@@ -385,8 +385,8 @@ fn parse_openxr(
     bindings: &toml_edit::Table,
     name: &str,
     action_name: &str,
-    mut xr_bindings: OxrActionBlueprint,
-) -> OxrActionBlueprint {
+    mut xr_bindings: OxrBindings,
+) -> OxrBindings {
     if let Some(openxr) = bindings.get("openxr") {
         let Some(openxr) = openxr.as_table() else {
             error!("{name}.{action_name}.openxr is not a table");
@@ -492,7 +492,7 @@ fn parse_mouse(
                 };
                 w
             };
-            mouse_bindings = mouse_bindings.add_binding(MouseButtonBinding {
+            mouse_bindings = mouse_bindings.bind(MouseButtonBinding {
                 button,
                 axis,
                 axis_dir,
@@ -568,7 +568,7 @@ fn parse_keyboard(
                 error!("cannot get number for {set_name}.{action_name}.keyboard.multiplier");
                 continue;
             };
-            keyboard_bindings = keyboard_bindings.add_binding(KeyboardBinding {
+            keyboard_bindings = keyboard_bindings.bind(KeyboardBinding {
                 key,
                 axis,
                 axis_dir,

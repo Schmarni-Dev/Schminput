@@ -25,7 +25,7 @@ impl Plugin for RebindingDefaultBindingsPlugin {
     }
 }
 #[cfg(feature = "xr")]
-type XrBindings<'a> = &'a OxrActionBlueprint;
+type XrBindings<'a> = &'a OxrBindings;
 #[cfg(not(feature = "xr"))]
 type XrBindings = ();
 
@@ -70,7 +70,7 @@ fn reset_bindings(
                     if let Some(v) = xr {
                         w.insert(v.clone());
                     } else {
-                        w.remove::<OxrActionBlueprint>();
+                        w.remove::<OxrBindings>();
                     }
                 }
             }
@@ -105,7 +105,7 @@ fn reset_bindings(
                 if let Some(v) = xr {
                     w.insert(v.clone());
                 } else {
-                    w.remove::<OxrActionBlueprint>();
+                    w.remove::<OxrBindings>();
                 }
             }
         }

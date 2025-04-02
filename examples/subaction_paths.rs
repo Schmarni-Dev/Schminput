@@ -11,73 +11,54 @@ fn main() -> AppExit {
 }
 
 #[derive(Resource)]
-struct Action(Entity);
+struct ActionHandle(Entity);
 
-fn print_action(action: Res<Action>, query: Query<&BoolActionValue>, paths: Res<SubactionPaths>) {
-    // panic!("STOP");
+fn print_action(
+    action: Res<ActionHandle>,
+    query: Query<&BoolActionValue>,
+    paths: Res<SubactionPaths>,
+) {
     let b = query.get(action.0).unwrap();
     info!("default: {}", b.any);
 
-    info!(
-        "keyboard: {}",
-        b.get_with_path(&paths.get("/keyboard").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "mouse: {}",
-        b.get_with_path(&paths.get("/mouse/button").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "gamepad: {}",
-        b.get_with_path(&paths.get("/gamepad/*").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "dpad: {}",
-        b.get_with_path(&paths.get("/gamepad/*/dpad").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
+    info!("keyboard: {}", b.get_or_default(paths.get("/keyboard")));
+    info!("mouse: {}", b.get_or_default(paths.get("/mouse/button")));
+    info!("gamepad: {}", b.get_or_default(paths.get("/gamepad/*")));
+    info!("dpad: {}", b.get_or_default(paths.get("/gamepad/*/dpad")));
     info!(
         "left trigger: {}",
-        b.get_with_path(&paths.get("/gamepad/*/trigger/left").unwrap())
-            .copied()
-            .unwrap_or_default()
+        b.get_or_default(paths.get("/gamepad/*/trigger/left"))
     );
     info!(
         "trigger: {}",
-        b.get_with_path(&paths.get("/gamepad/*/trigger").unwrap())
-            .copied()
-            .unwrap_or_default()
+        b.get_or_default(paths.get("/gamepad/*/trigger"))
     );
 }
 
 fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
-    let mut sub_paths = RequestedSubactionPaths::default();
-    sub_paths.push(paths.get_or_create_path("/mouse/button", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/keyboard", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/dpad", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/trigger/left", &mut cmds));
-    sub_paths.push(paths.get_or_create_path("/gamepad/*/trigger", &mut cmds));
+    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let sub_paths = RequestedSubactionPaths::new()
+        .mutate(&mut paths, cmds.reborrow())
+        .push("/mouse/button")
+        .push("/keyboard")
+        .push("/gamepad/*")
+        .push("/gamepad/*/dpad")
+        .push("/gamepad/*/trigger/left")
+        .push("/gamepad/*/trigger")
+        .end();
     let action = cmds
-        .spawn(ActionBundle::new("action", "Action", set))
-        .insert(BoolActionValue::default())
-        .insert(KeyboardBindings::default().add_binding(KeyboardBinding::new(KeyCode::Space)))
-        .insert(MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)))
-        .insert(
-            GamepadBindings::default()
-                .add_binding(GamepadBinding::new(GamepadBindingSource::DPadDown))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::South))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::LeftTrigger))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::RightTrigger)),
-        )
-        .insert(sub_paths)
+        .spawn((
+            Action::new("action", "Action", set),
+            BoolActionValue::new(),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
+            MouseBindings::new().bind(MouseButtonBinding::new(MouseButton::Left)),
+            GamepadBindings::new()
+                .bind(GamepadBinding::new(GamepadBindingSource::DPadDown))
+                .bind(GamepadBinding::new(GamepadBindingSource::South))
+                .bind(GamepadBinding::new(GamepadBindingSource::LeftTrigger))
+                .bind(GamepadBinding::new(GamepadBindingSource::RightTrigger)),
+            sub_paths,
+        ))
         .id();
-    cmds.insert_resource(Action(action));
+    cmds.insert_resource(ActionHandle(action));
 }

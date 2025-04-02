@@ -9,16 +9,16 @@ keywords = ["bevy", "input", "vr", "xr", "action"]
 
 [workspace.package]
 license = "MIT OR Apache-2.0"
-version = "0.1.0"
+version = "0.2.0-rc2"
 edition = "2021"
 repository = "https://github.com/Schmarni-Dev/Schminput/"
 
 [workspace.dependencies]
-schminput = { path = ".", version = "0.1.0" }
-bevy = { version = "0.14", default-features = false }
-bevy_mod_openxr = "0.1.0"
-bevy_mod_xr = "0.1.0"
-openxr = { version = "0.18", default-features = false }
+schminput = { path = ".", version = "0.2.0-rc2" }
+bevy = { version = "0.15", default-features = false }
+bevy_mod_xr = "0.2.0"
+bevy_mod_openxr = "0.2.0"
+openxr = { version = "0.19", default-features = false }
 
 [lints.clippy]
 too_many_arguments = "allow"
@@ -33,6 +33,7 @@ default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]
+atomicow = "1.0.0"
 bevy.workspace = true
 bevy_mod_xr = { workspace = true, optional = true }
 

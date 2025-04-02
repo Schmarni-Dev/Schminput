@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use bevy::{
     input::{
-        gamepad::{GamepadAxisChangedEvent, GamepadButtonInput},
+        gamepad::{GamepadAxisChangedEvent, GamepadButtonChangedEvent},
         keyboard::KeyboardInput,
         mouse::MouseButtonInput,
         ButtonState,
@@ -11,7 +11,7 @@ use bevy::{
     prelude::*,
 };
 #[cfg(feature = "xr")]
-use schminput::openxr::OxrActionBlueprint;
+use schminput::openxr::OxrBindings;
 use schminput::{
     gamepad::{GamepadBinding, GamepadBindingSource, GamepadBindings},
     keyboard::KeyboardBindings,
@@ -157,7 +157,7 @@ impl Plugin for RuntimeRebindingPlugin {
 #[cfg(feature = "xr")]
 fn handle_openxr_request(
     mut event: EventReader<RequestOpenXrRebinding>,
-    mut action_query: Query<&mut OxrActionBlueprint>,
+    mut action_query: Query<&mut OxrBindings>,
 ) {
     match event.read().next() {
         Some(RequestOpenXrRebinding::DeleteBinding {
@@ -223,7 +223,7 @@ fn handle_gamepad_request(
 fn handle_gamepad_rebinding(
     rebinding: Res<PendingGamepadRebinding>,
     mut action_query: Query<Option<&mut GamepadBindings>>,
-    mut button_input: EventReader<GamepadButtonInput>,
+    mut button_input: EventReader<GamepadButtonChangedEvent>,
     mut axis_input: EventReader<GamepadAxisChangedEvent>,
     mut cmds: Commands,
     mut waiting: ResMut<WaitingForInput>,
@@ -245,7 +245,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
-                binding.source = GamepadBindingSource::from_button_type(&input.button.button_type);
+                binding.source = GamepadBindingSource::from_button(&input.button);
             }
             PendingGamepadRebinding::New { action } => {
                 let Ok(bindings) = action_query.get_mut(action) else {
@@ -254,12 +254,12 @@ fn handle_gamepad_rebinding(
                 };
                 match bindings {
                     Some(mut bindings) => bindings.bindings.push(GamepadBinding::new(
-                        GamepadBindingSource::from_button_type(&input.button.button_type),
+                        GamepadBindingSource::from_button(&input.button),
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
-                                GamepadBindingSource::from_button_type(&input.button.button_type),
+                            .insert(GamepadBindings::new().bind(GamepadBinding::new(
+                                GamepadBindingSource::from_button(&input.button),
                             )));
                     }
                 }
@@ -286,7 +286,7 @@ fn handle_gamepad_rebinding(
                     error!("keyboard rebinding request with invalid binding index");
                     return;
                 };
-                binding.source = GamepadBindingSource::from_axis_type(&input.axis_type);
+                binding.source = GamepadBindingSource::from_axis(&input.axis);
             }
             PendingGamepadRebinding::New { action } => {
                 let Ok(bindings) = action_query.get_mut(action) else {
@@ -295,12 +295,12 @@ fn handle_gamepad_rebinding(
                 };
                 match bindings {
                     Some(mut bindings) => bindings.bindings.push(GamepadBinding::new(
-                        GamepadBindingSource::from_axis_type(&input.axis_type),
+                        GamepadBindingSource::from_axis(&input.axis),
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::default().add_binding(GamepadBinding::new(
-                                GamepadBindingSource::from_axis_type(&input.axis_type),
+                            .insert(GamepadBindings::new().bind(GamepadBinding::new(
+                                GamepadBindingSource::from_axis(&input.axis),
                             )));
                     }
                 }
@@ -356,7 +356,7 @@ fn handle_mouse_request(
             let Ok(mut v) = action_query.get_mut(action) else {
                 return;
             };
-            v.movement = Some(MouseMotionBinding::default());
+            v.movement = Some(MouseMotionBinding::new());
         }
         None => {}
     }
@@ -398,7 +398,7 @@ fn handle_mouse_rebinding(
                         bindings.buttons.push(MouseButtonBinding::new(input.button))
                     }
                     None => {
-                        let mut bindings = MouseBindings::default();
+                        let mut bindings = MouseBindings::new();
                         bindings.buttons.push(MouseButtonBinding::new(input.button));
                         cmds.entity(action).insert(bindings);
                     }
@@ -485,7 +485,7 @@ fn handle_keyboard_rebinding(
                         .0
                         .push(schminput::keyboard::KeyboardBinding::new(input.key_code)),
                     None => {
-                        let mut bindings = KeyboardBindings::default();
+                        let mut bindings = KeyboardBindings::new();
                         bindings
                             .0
                             .push(schminput::keyboard::KeyboardBinding::new(input.key_code));

@@ -11,7 +11,11 @@ pub mod xr;
 
 use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
-use bevy::{app::PluginGroupBuilder, prelude::*, utils::EntityHashSet};
+use bevy::{
+    app::PluginGroupBuilder,
+    ecs::{component::ComponentId, entity::EntityHashSet, world::DeferredWorld},
+    prelude::*,
+};
 use binding_modification::BindingModifiactions;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
@@ -44,45 +48,7 @@ impl Plugin for SchminputPlugin {
         app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
         app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
-        app.observe(on_add_in_action_set);
-
-        app.observe(
-            |trigger: Trigger<OnRemove, InActionSet>,
-             mut set_query: Query<&mut ActionsInSet>,
-             action_query: Query<&InActionSet>| {
-                if trigger.entity() == Entity::PLACEHOLDER {
-                    warn!("OnRemove entity is Placeholder");
-                    return;
-                }
-                let Ok(in_action_set) = action_query.get(trigger.entity()) else {
-                    warn!("OnRemove unable to get removed component");
-                    return;
-                };
-                let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
-                    return;
-                };
-                actions_in_set.0.insert(trigger.entity());
-            },
-        );
     }
-}
-
-fn on_add_in_action_set(
-    trigger: Trigger<OnAdd, InActionSet>,
-    mut set_query: Query<&mut ActionsInSet>,
-    action_query: Query<&InActionSet>,
-) {
-    if trigger.entity() == Entity::PLACEHOLDER {
-        warn!("OnAdd entity is Placeholder");
-        return;
-    }
-    let Ok(in_action_set) = action_query.get(trigger.entity()) else {
-        return;
-    };
-    let Ok(mut actions_in_set) = set_query.get_mut(in_action_set.0) else {
-        return;
-    };
-    actions_in_set.0.insert(trigger.entity());
 }
 
 fn clean_bool(mut query: Query<&mut BoolActionValue>) {
@@ -105,44 +71,94 @@ pub struct DefaultSchminputPlugins;
 
 impl PluginGroup for DefaultSchminputPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        let p = PluginGroupBuilder::start::<DefaultSchminputPlugins>()
+        let g = PluginGroupBuilder::start::<DefaultSchminputPlugins>()
             .add(SchminputPlugin)
             .add(SubactionPathPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
         #[cfg(feature = "xr")]
-        let p = p.add(xr::GenericXrInputPlugin);
+        let g = g.add(xr::GenericXrInputPlugin);
         #[cfg(all(feature = "xr", not(target_family = "wasm")))]
-        return p.add(openxr::OxrInputPlugin);
-        #[cfg(any(not(feature = "xr"), target_family = "wasm"))]
-        return p;
+        let g = g.add(openxr::OxrInputPlugin);
+        g
     }
 }
 
-/// The ActionSet This Action belongs to.
-#[derive(Debug, Clone, Copy, Component, Reflect, Deref)]
-pub struct InActionSet(pub Entity);
+#[derive(Debug, Clone, Reflect, Component)]
+#[component(on_add = on_action_add)]
+#[component(on_remove = on_action_remove)]
+#[require(RequestedSubactionPaths, BindingModifiactions)]
+pub struct Action {
+    pub set: Entity,
+    pub localized_name: Cow<'static, str>,
+    pub name: Cow<'static, str>,
+}
+
+fn on_action_add(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
+    let Some(set_entity) = world.entity(entity).get::<Action>().map(|a| a.set) else {
+        error!("action not on entity, this should be unreachable!");
+        return;
+    };
+    let mut tmp_entity = world.entity_mut(set_entity);
+    let Some(mut set) = tmp_entity.get_mut::<ActionsInSet>() else {
+        error!("invalid action set {set_entity:?}");
+        return;
+    };
+    set.0.insert(entity);
+}
+
+fn on_action_remove(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
+    let Some(set_entity) = world.entity(entity).get::<Action>().map(|a| a.set) else {
+        error!("action not on entity, this should be unreachable!");
+        return;
+    };
+    let mut tmp_entity = world.entity_mut(set_entity);
+    let Some(mut set) = tmp_entity.get_mut::<ActionsInSet>() else {
+        error!("invalid action set {set_entity:?}");
+        return;
+    };
+    set.0.remove(&entity);
+}
+
+impl Action {
+    pub fn new(
+        id: impl Into<Cow<'static, str>>,
+        name: impl Into<Cow<'static, str>>,
+        set: Entity,
+    ) -> Action {
+        Action {
+            name: id.into(),
+            localized_name: name.into(),
+            set,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Reflect, Component)]
+#[component(on_remove = on_action_remove)]
+#[require(ActionsInSet)]
+pub struct ActionSet {
+    pub name: Cow<'static, str>,
+    pub localized_name: Cow<'static, str>,
+    pub enabled: bool,
+}
+
+impl ActionSet {
+    pub fn new(
+        name: impl Into<Cow<'static, str>>,
+        localized_name: impl Into<Cow<'static, str>>,
+    ) -> ActionSet {
+        ActionSet {
+            name: name.into(),
+            localized_name: localized_name.into(),
+            enabled: true,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Component, Reflect, Deref, Default)]
-pub struct ActionsInSet(pub EntityHashSet<Entity>);
-
-/// The Display name of the Action Set.
-#[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct LocalizedActionSetName(pub Cow<'static, str>);
-
-/// This needs to be a unique identifier that describes the Action Set.
-#[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct ActionSetName(pub Cow<'static, str>);
-
-/// The Display name of the Action.
-#[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct LocalizedActionName(pub Cow<'static, str>);
-
-/// This needs to be a unique identifier that describes the action.
-/// If using an ActionSet this only needs to be unique in that Set.
-#[derive(Debug, Clone, Component, Reflect, Deref)]
-pub struct ActionName(pub Cow<'static, str>);
+pub struct ActionsInSet(pub EntityHashSet);
 
 /// +X: Right, +Y: Up
 #[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
@@ -153,6 +169,22 @@ pub struct F32ActionValue(pub SubactionPathMap<f32>);
 
 #[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]
 pub struct BoolActionValue(pub SubactionPathMap<bool>);
+
+impl Vec2ActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+impl F32ActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+impl BoolActionValue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 // there might be a better name for this
 /// +X = Right, +Y = Up
@@ -186,9 +218,6 @@ impl InputAxis {
         }
     }
 }
-
-#[derive(Component, Clone, Copy, Debug, Deref, DerefMut)]
-pub struct ActionSetEnabled(pub bool);
 
 // there might be a better name for this
 #[derive(Clone, Copy, Debug, Reflect, Default, PartialEq, Eq, Hash)]
@@ -246,52 +275,5 @@ impl Display for ButtonInputBeheavior {
             ButtonInputBeheavior::Pressed => "Pressed",
             ButtonInputBeheavior::JustReleased => "On Release",
         })
-    }
-}
-
-#[derive(Bundle, Clone, Debug)]
-pub struct ActionSetBundle {
-    pub id: ActionSetName,
-    pub name: LocalizedActionSetName,
-    pub enabled: ActionSetEnabled,
-    pub actions: ActionsInSet,
-}
-
-impl ActionSetBundle {
-    pub fn new(
-        id: impl Into<Cow<'static, str>>,
-        name: impl Into<Cow<'static, str>>,
-    ) -> ActionSetBundle {
-        ActionSetBundle {
-            id: ActionSetName(id.into()),
-            name: LocalizedActionSetName(name.into()),
-            enabled: ActionSetEnabled(true),
-            actions: ActionsInSet::default(),
-        }
-    }
-}
-
-#[derive(Bundle, Clone, Debug)]
-pub struct ActionBundle {
-    pub id: ActionName,
-    pub name: LocalizedActionName,
-    pub set: InActionSet,
-    pub paths: RequestedSubactionPaths,
-    pub modifications: BindingModifiactions,
-}
-
-impl ActionBundle {
-    pub fn new(
-        id: impl Into<Cow<'static, str>>,
-        name: impl Into<Cow<'static, str>>,
-        set: Entity,
-    ) -> ActionBundle {
-        ActionBundle {
-            id: ActionName(id.into()),
-            name: LocalizedActionName(name.into()),
-            set: InActionSet(set),
-            paths: RequestedSubactionPaths::default(),
-            modifications: BindingModifiactions::default(),
-        }
     }
 }

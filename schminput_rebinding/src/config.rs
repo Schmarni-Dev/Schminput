@@ -50,19 +50,19 @@ impl Plugin for SchminputConfigPlugin {
         app.add_systems(
             PostUpdate,
             load_config
-                .run_if(on_event::<LoadSchminputConfig>())
+                .run_if(on_event::<LoadSchminputConfig>)
                 .before(PersistentBindingsSet::Deserialize),
         );
         app.add_systems(
             PostUpdate,
             request_save_config
-                .run_if(on_event::<SaveSchminputConfig>())
+                .run_if(on_event::<SaveSchminputConfig>)
                 .before(PersistentBindingsSet::Serialize),
         );
         app.add_systems(
             PostUpdate,
             save_config
-                .run_if(on_event::<FinnishedSchminputConfigSerialization>())
+                .run_if(on_event::<FinnishedSchminputConfigSerialization>)
                 .after(PersistentBindingsSet::Serialize),
         );
     }

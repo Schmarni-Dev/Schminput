@@ -1,7 +1,8 @@
 use std::time::Duration;
 
+use atomicow::CowArc;
 use bevy::{
-    input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest},
+    input::gamepad::{GamepadInput, GamepadRumbleIntensity, GamepadRumbleRequest},
     prelude::*,
 };
 
@@ -11,20 +12,19 @@ use crate::{
     },
     prelude::RequestedSubactionPaths,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
-    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
-    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 pub struct GamepadPlugin;
 
 /// Use the index of a gamepad in this resource in a subaction path to referebce
 /// a specific gamepad
-#[derive(Default, Resource, Clone)]
-pub struct GamepadRegistery(pub Vec<Gamepad>);
+#[derive(Component, Clone, Debug, Deref)]
+pub struct GamepadIdentifier(pub CowArc<'static, str>);
 
 impl Plugin for GamepadPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GamepadRegistery>();
         app.add_systems(
             PreUpdate,
             sync_actions.in_set(SchminputSet::SyncInputActions),
@@ -66,14 +66,9 @@ fn handle_new_subaction_paths(
             "*" | "" => {
                 cmds.entity(e).insert(GamepadPathSelector::All);
             }
-            v if v.parse::<usize>().is_ok() => {
-                let Ok(num) = v.parse::<usize>() else {
-                    unreachable!()
-                };
-
-                cmds.entity(e).insert(GamepadPathSelector::Gamepad(num));
-            }
             v => {
+                cmds.entity(e)
+                    .insert(GamepadPathSelector::Gamepad(v.to_owned()));
                 error!(
                     "unable to parse gamepad id, use a positive integer or *: {}",
                     v
@@ -157,20 +152,19 @@ fn sync_haptics(
     haptic_query: Query<(
         &GamepadHapticOutputBindings,
         &GamepadHapticOutput,
-        &InActionSet,
+        &Action,
         &RequestedSubactionPaths,
     )>,
     path_query: Query<&GamepadPathSelector>,
-    set_query: Query<&ActionSetEnabled>,
-    gamepad_registry: Res<GamepadRegistery>,
-    gamepads: Res<Gamepads>,
+    set_query: Query<&ActionSet>,
+    gamepads: Query<(Entity, &Gamepad, Option<&GamepadIdentifier>)>,
 ) {
-    for (bindings, out, set, sub_paths) in &haptic_query {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+    for (bindings, out, action, sub_paths) in &haptic_query {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
         for binding in bindings.bindings.iter() {
-            for gamepad in gamepads.iter() {
+            for (gamepad, _, _) in gamepads.iter() {
                 for e in &out.haptic_feedbacks.any {
                     gamepad_haptic_event.send(match e {
                         GamepadHapticValue::Add {
@@ -193,7 +187,7 @@ fn sync_haptics(
             for binding in bindings.bindings.iter() {
                 match device {
                     GamepadPathSelector::All => {
-                        for gamepad in gamepads.iter() {
+                        for (gamepad, _, _) in gamepads.iter() {
                             for e in out
                                 .haptic_feedbacks
                                 .get_with_path(sub_path)
@@ -221,7 +215,11 @@ fn sync_haptics(
                             .get_with_path(sub_path)
                             .unwrap_or(&Vec::new())
                         {
-                            let Some(gamepad) = gamepad_registry.0.get(*gamepad).copied() else {
+                            let Some((gamepad, _)) = gamepads
+                                .iter()
+                                .filter_map(|(e, _, v)| Some((e, v?)))
+                                .find(|(_, v)| v.as_ref() == gamepad.as_str())
+                            else {
                                 continue;
                             };
                             gamepad_haptic_event.send(match e {
@@ -245,20 +243,17 @@ fn sync_haptics(
 
 #[allow(clippy::type_complexity)]
 fn sync_actions(
-    axis: Res<Axis<GamepadAxis>>,
-    button: Res<Axis<GamepadButton>>,
-    gamepads: Res<Gamepads>,
+    gamepads: Query<(Entity, &Gamepad, Option<&GamepadIdentifier>)>,
     mut query: Query<(
         &GamepadBindings,
-        &InActionSet,
+        &Action,
         &RequestedSubactionPaths,
         &BindingModifiactions,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
     )>,
-    gamepad_registry: Res<GamepadRegistery>,
-    set_query: Query<&ActionSetEnabled>,
+    set_query: Query<&ActionSet>,
     path_query: Query<(
         &GamepadPathSelector,
         Option<&GamepadPathTarget>,
@@ -272,7 +267,7 @@ fn sync_actions(
 ) {
     for (
         gamepad_bindings,
-        set,
+        action,
         sub_paths,
         modifications,
         mut bool_value,
@@ -280,7 +275,7 @@ fn sync_actions(
         mut vec2_value,
     ) in &mut query
     {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
 
@@ -305,12 +300,10 @@ fn sync_actions(
                     }
                 }
             }
-            for gamepad in gamepads.iter() {
+            for (_, gamepad, _) in gamepads.iter() {
                 handle_gamepad_inputs(
                     gamepad,
                     binding,
-                    &axis,
-                    &button,
                     bool_value.as_deref_mut(),
                     float_value.as_deref_mut(),
                     vec2_value.as_deref_mut(),
@@ -348,14 +341,12 @@ fn sync_actions(
                         continue;
                     }
                 }
-                match *device {
+                match device {
                     GamepadPathSelector::All => {
-                        for gamepad in gamepads.iter() {
+                        for (_, gamepad, _) in gamepads.iter() {
                             handle_gamepad_inputs(
                                 gamepad,
                                 binding,
-                                &axis,
-                                &button,
                                 bool_value.as_deref_mut(),
                                 float_value.as_deref_mut(),
                                 vec2_value.as_deref_mut(),
@@ -367,14 +358,16 @@ fn sync_actions(
                         }
                     }
                     GamepadPathSelector::Gamepad(gamepad) => {
-                        let Some(gamepad) = gamepad_registry.0.get(gamepad).copied() else {
+                        let Some((gamepad, _)) = gamepads
+                            .iter()
+                            .filter_map(|(_, e, v)| Some((e, v?)))
+                            .find(|(_, v)| v.as_ref() == gamepad.as_str())
+                        else {
                             continue;
                         };
                         handle_gamepad_inputs(
                             gamepad,
                             binding,
-                            &axis,
-                            &button,
                             bool_value.as_deref_mut(),
                             float_value.as_deref_mut(),
                             vec2_value.as_deref_mut(),
@@ -392,10 +385,8 @@ fn sync_actions(
 
 #[allow(clippy::too_many_arguments)]
 fn handle_gamepad_inputs(
-    gamepad: Gamepad,
+    gamepad: &Gamepad,
     binding: &GamepadBinding,
-    axis: &Axis<GamepadAxis>,
-    button: &Axis<GamepadButton>,
     mut bool_value: Option<&mut BoolActionValue>,
     mut float_value: Option<&mut F32ActionValue>,
     mut vec2_value: Option<&mut Vec2ActionValue>,
@@ -404,26 +395,17 @@ fn handle_gamepad_inputs(
     pre_mul_delta_time: bool,
     unbounded: bool,
 ) {
-    let mut v = 0.0;
     let delta_multiplier = match pre_mul_delta_time {
-        true => time.delta_seconds(),
+        true => time.delta_secs(),
         false => 1.0,
     };
-    if let Some(axis_type) = binding.source.as_axis_type() {
-        let Some(v2) = (match unbounded {
-            true => axis.get_unclamped(GamepadAxis::new(gamepad, axis_type)),
-            false => axis.get(GamepadAxis::new(gamepad, axis_type)),
-        }) else {
-            warn!("axis.get returned None, idk what that means");
-            return;
-        };
-        v = v2;
-    }
-    if let Some(button_type) = binding.source.as_button_type() {
-        v = button
-            .get(GamepadButton::new(gamepad, button_type))
-            .unwrap_or_default();
-    }
+    let Some(v) = (match unbounded {
+        true => gamepad.get_unclamped(binding.source),
+        false => gamepad.get(binding.source),
+    }) else {
+        warn!("gamepad.get returned None, idk what that means");
+        return;
+    };
     if let Some(bool_value) = bool_value.as_mut() {
         match path {
             Some(path) => *bool_value.0.entry_with_path(path).or_default() |= v > 0.1,
@@ -547,6 +529,9 @@ impl GamepadHapticOutput {
         self.haptic_feedbacks.any.push(GamepadHapticValue::Stop);
         self
     }
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 #[derive(Clone, Component, Debug, Reflect, Default)]
@@ -555,9 +540,21 @@ pub struct GamepadBindings {
 }
 
 impl GamepadBindings {
-    pub fn add_binding(mut self, binding: GamepadBinding) -> Self {
+    pub fn bind(mut self, binding: GamepadBinding) -> Self {
         self.bindings.push(binding);
         self
+    }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+// Helper Methods
+impl GamepadBindings {
+    pub fn add_stick(self, x_axis: GamepadBindingSource, y_axis: GamepadBindingSource) -> Self {
+        self.bind(GamepadBinding::new(x_axis).x_axis().positive())
+            .bind(GamepadBinding::new(y_axis).y_axis().positive())
     }
 }
 
@@ -674,6 +671,15 @@ pub enum GamepadBindingSource {
     /// Miscellaneous buttons, considered non-standard (i.e. Extra buttons on a flight stick that do not have a gamepad equivalent).
     OtherButton(u8),
 }
+impl From<GamepadBindingSource> for GamepadInput {
+    fn from(value: GamepadBindingSource) -> Self {
+        match (value.as_axis_type(), value.as_button_type()) {
+            (None, Some(v)) => Self::Button(v),
+            (Some(v), None) => Self::Axis(v),
+            (Some(_), Some(_)) | (None, None) => unreachable!(),
+        }
+    }
+}
 impl std::fmt::Display for GamepadBindingSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -711,85 +717,85 @@ impl std::fmt::Display for GamepadBindingSource {
 }
 
 impl GamepadBindingSource {
-    pub fn as_axis_type(&self) -> Option<GamepadAxisType> {
+    pub fn as_axis_type(&self) -> Option<GamepadAxis> {
         Some(match self {
-            GamepadBindingSource::LeftStickX => GamepadAxisType::LeftStickX,
-            GamepadBindingSource::LeftStickY => GamepadAxisType::LeftStickY,
-            GamepadBindingSource::RightStickX => GamepadAxisType::RightStickX,
-            GamepadBindingSource::RightStickY => GamepadAxisType::RightStickY,
-            GamepadBindingSource::LeftZ => GamepadAxisType::LeftZ,
-            GamepadBindingSource::RightZ => GamepadAxisType::RightZ,
-            GamepadBindingSource::OtherAxis(v) => GamepadAxisType::Other(*v),
+            GamepadBindingSource::LeftStickX => GamepadAxis::LeftStickX,
+            GamepadBindingSource::LeftStickY => GamepadAxis::LeftStickY,
+            GamepadBindingSource::RightStickX => GamepadAxis::RightStickX,
+            GamepadBindingSource::RightStickY => GamepadAxis::RightStickY,
+            GamepadBindingSource::LeftZ => GamepadAxis::LeftZ,
+            GamepadBindingSource::RightZ => GamepadAxis::RightZ,
+            GamepadBindingSource::OtherAxis(v) => GamepadAxis::Other(*v),
             _ => return None,
         })
     }
-    pub fn from_axis_type(axis: &GamepadAxisType) -> GamepadBindingSource {
+    pub fn from_axis(axis: &GamepadAxis) -> GamepadBindingSource {
         match axis {
-            GamepadAxisType::LeftStickX => GamepadBindingSource::LeftStickX,
-            GamepadAxisType::LeftStickY => GamepadBindingSource::LeftStickY,
-            GamepadAxisType::RightStickX => GamepadBindingSource::RightStickX,
-            GamepadAxisType::RightStickY => GamepadBindingSource::RightStickY,
-            GamepadAxisType::LeftZ => GamepadBindingSource::LeftZ,
-            GamepadAxisType::RightZ => GamepadBindingSource::RightZ,
-            GamepadAxisType::Other(v) => GamepadBindingSource::OtherAxis(*v),
+            GamepadAxis::LeftStickX => GamepadBindingSource::LeftStickX,
+            GamepadAxis::LeftStickY => GamepadBindingSource::LeftStickY,
+            GamepadAxis::RightStickX => GamepadBindingSource::RightStickX,
+            GamepadAxis::RightStickY => GamepadBindingSource::RightStickY,
+            GamepadAxis::LeftZ => GamepadBindingSource::LeftZ,
+            GamepadAxis::RightZ => GamepadBindingSource::RightZ,
+            GamepadAxis::Other(v) => GamepadBindingSource::OtherAxis(*v),
         }
     }
 
-    pub fn as_button_type(&self) -> Option<GamepadButtonType> {
+    pub fn as_button_type(&self) -> Option<GamepadButton> {
         Some(match self {
-            GamepadBindingSource::South => GamepadButtonType::South,
-            GamepadBindingSource::East => GamepadButtonType::East,
-            GamepadBindingSource::North => GamepadButtonType::North,
-            GamepadBindingSource::West => GamepadButtonType::West,
-            GamepadBindingSource::LeftTrigger => GamepadButtonType::LeftTrigger2,
-            GamepadBindingSource::LeftSecondaryTrigger => GamepadButtonType::LeftTrigger,
-            GamepadBindingSource::RightTrigger => GamepadButtonType::RightTrigger2,
-            GamepadBindingSource::RightSecondaryTrigger => GamepadButtonType::RightTrigger,
-            GamepadBindingSource::LeftStickClick => GamepadButtonType::LeftThumb,
-            GamepadBindingSource::RightStickClick => GamepadButtonType::RightThumb,
-            GamepadBindingSource::DPadUp => GamepadButtonType::DPadUp,
-            GamepadBindingSource::DPadDown => GamepadButtonType::DPadDown,
-            GamepadBindingSource::DPadLeft => GamepadButtonType::DPadLeft,
-            GamepadBindingSource::DPadRight => GamepadButtonType::DPadRight,
-            GamepadBindingSource::Select => GamepadButtonType::Select,
-            GamepadBindingSource::Start => GamepadButtonType::Start,
-            GamepadBindingSource::Mode => GamepadButtonType::Mode,
-            GamepadBindingSource::C => GamepadButtonType::C,
-            GamepadBindingSource::Z => GamepadButtonType::Z,
-            GamepadBindingSource::OtherButton(v) => GamepadButtonType::Other(*v),
+            GamepadBindingSource::South => GamepadButton::South,
+            GamepadBindingSource::East => GamepadButton::East,
+            GamepadBindingSource::North => GamepadButton::North,
+            GamepadBindingSource::West => GamepadButton::West,
+            GamepadBindingSource::LeftTrigger => GamepadButton::LeftTrigger2,
+            GamepadBindingSource::LeftSecondaryTrigger => GamepadButton::LeftTrigger,
+            GamepadBindingSource::RightTrigger => GamepadButton::RightTrigger2,
+            GamepadBindingSource::RightSecondaryTrigger => GamepadButton::RightTrigger,
+            GamepadBindingSource::LeftStickClick => GamepadButton::LeftThumb,
+            GamepadBindingSource::RightStickClick => GamepadButton::RightThumb,
+            GamepadBindingSource::DPadUp => GamepadButton::DPadUp,
+            GamepadBindingSource::DPadDown => GamepadButton::DPadDown,
+            GamepadBindingSource::DPadLeft => GamepadButton::DPadLeft,
+            GamepadBindingSource::DPadRight => GamepadButton::DPadRight,
+            GamepadBindingSource::Select => GamepadButton::Select,
+            GamepadBindingSource::Start => GamepadButton::Start,
+            GamepadBindingSource::Mode => GamepadButton::Mode,
+            GamepadBindingSource::C => GamepadButton::C,
+            GamepadBindingSource::Z => GamepadButton::Z,
+            GamepadBindingSource::OtherButton(v) => GamepadButton::Other(*v),
             _ => return None,
         })
     }
-    pub fn from_button_type(button: &GamepadButtonType) -> GamepadBindingSource {
+    pub fn from_button(button: &GamepadButton) -> GamepadBindingSource {
         match button {
-            GamepadButtonType::South => GamepadBindingSource::South,
-            GamepadButtonType::East => GamepadBindingSource::East,
-            GamepadButtonType::North => GamepadBindingSource::North,
-            GamepadButtonType::West => GamepadBindingSource::West,
-            GamepadButtonType::LeftTrigger2 => GamepadBindingSource::LeftTrigger,
-            GamepadButtonType::LeftTrigger => GamepadBindingSource::LeftSecondaryTrigger,
-            GamepadButtonType::RightTrigger2 => GamepadBindingSource::RightTrigger,
-            GamepadButtonType::RightTrigger => GamepadBindingSource::RightSecondaryTrigger,
-            GamepadButtonType::LeftThumb => GamepadBindingSource::LeftStickClick,
-            GamepadButtonType::RightThumb => GamepadBindingSource::RightStickClick,
-            GamepadButtonType::DPadUp => GamepadBindingSource::DPadUp,
-            GamepadButtonType::DPadDown => GamepadBindingSource::DPadDown,
-            GamepadButtonType::DPadLeft => GamepadBindingSource::DPadLeft,
-            GamepadButtonType::DPadRight => GamepadBindingSource::DPadRight,
-            GamepadButtonType::Select => GamepadBindingSource::Select,
-            GamepadButtonType::Start => GamepadBindingSource::Start,
-            GamepadButtonType::Mode => GamepadBindingSource::Mode,
-            GamepadButtonType::C => GamepadBindingSource::C,
-            GamepadButtonType::Z => GamepadBindingSource::Z,
-            GamepadButtonType::Other(v) => GamepadBindingSource::OtherButton(*v),
+            GamepadButton::South => GamepadBindingSource::South,
+            GamepadButton::East => GamepadBindingSource::East,
+            GamepadButton::North => GamepadBindingSource::North,
+            GamepadButton::West => GamepadBindingSource::West,
+            GamepadButton::LeftTrigger2 => GamepadBindingSource::LeftTrigger,
+            GamepadButton::LeftTrigger => GamepadBindingSource::LeftSecondaryTrigger,
+            GamepadButton::RightTrigger2 => GamepadBindingSource::RightTrigger,
+            GamepadButton::RightTrigger => GamepadBindingSource::RightSecondaryTrigger,
+            GamepadButton::LeftThumb => GamepadBindingSource::LeftStickClick,
+            GamepadButton::RightThumb => GamepadBindingSource::RightStickClick,
+            GamepadButton::DPadUp => GamepadBindingSource::DPadUp,
+            GamepadButton::DPadDown => GamepadBindingSource::DPadDown,
+            GamepadButton::DPadLeft => GamepadBindingSource::DPadLeft,
+            GamepadButton::DPadRight => GamepadBindingSource::DPadRight,
+            GamepadButton::Select => GamepadBindingSource::Select,
+            GamepadButton::Start => GamepadBindingSource::Start,
+            GamepadButton::Mode => GamepadBindingSource::Mode,
+            GamepadButton::C => GamepadBindingSource::C,
+            GamepadButton::Z => GamepadBindingSource::Z,
+            GamepadButton::Other(v) => GamepadBindingSource::OtherButton(*v),
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash, Component)]
+#[derive(Clone, Debug, Reflect, PartialEq, Eq, Hash, Component)]
 pub enum GamepadPathSelector {
     All,
-    Gamepad(usize),
+    Gamepad(String),
 }
 
 impl GamepadPathTarget {

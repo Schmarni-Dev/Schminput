@@ -3,8 +3,8 @@ use bevy::prelude::*;
 use crate::{
     binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    ActionSetEnabled, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InActionSet,
-    InputAxis, InputAxisDirection, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
+    InputAxisDirection, SchminputSet, Vec2ActionValue,
 };
 
 impl Plugin for KeyboardPlugin {
@@ -39,7 +39,7 @@ pub fn handle_new_subaction_paths(
 pub fn sync_actions(
     mut action_query: Query<(
         &KeyboardBindings,
-        &InActionSet,
+        &Action,
         Option<&mut BoolActionValue>,
         Option<&mut F32ActionValue>,
         Option<&mut Vec2ActionValue>,
@@ -47,14 +47,14 @@ pub fn sync_actions(
         &BindingModifiactions,
     )>,
     path_query: Query<Has<KeyboardSubactionPath>>,
-    set_query: Query<&ActionSetEnabled>,
+    set_query: Query<&ActionSet>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
     for (
         bindings,
-        set,
+        action,
         mut bool_value,
         mut f32_value,
         mut vec2_value,
@@ -62,7 +62,7 @@ pub fn sync_actions(
         modifications,
     ) in &mut action_query
     {
-        if !(set_query.get(set.0).is_ok_and(|v| v.0)) {
+        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
             continue;
         };
         let paths = requested_paths
@@ -83,7 +83,7 @@ pub fn sync_actions(
             pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
         }
         let delta_multiplier = match pre_mul_delta_time {
-            true => time.delta_seconds(),
+            true => time.delta_secs(),
             false => 1.0,
         };
         for binding in &bindings.0 {
@@ -140,9 +140,24 @@ pub struct KeyboardSubactionPath;
 pub struct KeyboardBindings(pub Vec<KeyboardBinding>);
 
 impl KeyboardBindings {
-    pub fn add_binding(mut self, binding: KeyboardBinding) -> Self {
+    pub fn bind(mut self, binding: KeyboardBinding) -> Self {
         self.0.push(binding);
         self
+    }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+//helper functions
+impl KeyboardBindings {
+    /// helper function for adding a dpad style binding, internally this just calls add_binding
+    pub fn add_dpad(self, up: KeyCode, down: KeyCode, left: KeyCode, right: KeyCode) -> Self {
+        self.bind(KeyboardBinding::new(up).y_axis().positive_axis_dir())
+            .bind(KeyboardBinding::new(down).y_axis().negative_axis_dir())
+            .bind(KeyboardBinding::new(right).x_axis().positive_axis_dir())
+            .bind(KeyboardBinding::new(left).x_axis().negative_axis_dir())
     }
 }
 

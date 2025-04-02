@@ -21,59 +21,57 @@ fn main() {
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let set = cmds.spawn(ActionSetBundle::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
     use schminput::keyboard::KeyboardBinding as KbB;
     cmds.spawn((
-        ActionBundle::new("move", "Move", set),
-        Vec2ActionValue::default(),
-        KeyboardBindings::default()
-            .add_binding(KbB::new(KeyCode::KeyW).y_axis().positive_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyS).y_axis().negative_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyA).x_axis().negative_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
-        GamepadBindings::default()
-            .add_binding(
+        Action::new("move", "Move", set),
+        Vec2ActionValue::new(),
+        KeyboardBindings::new()
+            .bind(KbB::new(KeyCode::KeyW).y_axis().positive_axis_dir())
+            .bind(KbB::new(KeyCode::KeyS).y_axis().negative_axis_dir())
+            .bind(KbB::new(KeyCode::KeyA).x_axis().negative_axis_dir())
+            .bind(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
+        GamepadBindings::new()
+            .bind(
                 GamepadBinding::new(GamepadBindingSource::LeftStickX)
                     .x_axis()
                     .positive(),
             )
-            .add_binding(
+            .bind(
                 GamepadBinding::new(GamepadBindingSource::LeftStickY)
                     .y_axis()
                     .positive(),
             ),
     ));
-    cmds.spawn(ActionBundle::new("look", "Look", set)).insert((
-        Vec2ActionValue::default(),
-        MouseBindings::default().delta_motion(),
-        GamepadBindings::default()
-            .add_binding(
+    cmds.spawn((
+        Action::new("look", "Look", set),
+        Vec2ActionValue::new(),
+        MouseBindings::new().delta_motion(),
+        GamepadBindings::new()
+            .bind(
                 GamepadBinding::new(GamepadBindingSource::RightStickX)
                     .x_axis()
                     .positive(),
             )
-            .add_binding(
+            .bind(
                 GamepadBinding::new(GamepadBindingSource::RightStickY)
                     .y_axis()
                     .positive(),
             ),
     ));
-    cmds.spawn(ActionBundle::new("jump", "Jump", set)).insert((
-        BoolActionValue::default(),
-        GamepadBindings::default()
-            .add_binding(GamepadBinding::new(GamepadBindingSource::South))
-            .add_binding(GamepadBinding::new(GamepadBindingSource::OtherButton(128))),
-        KeyboardBindings::default().add_binding(KbB::new(KeyCode::Space).just_pressed()),
-        MouseBindings::default().add_binding(MouseButtonBinding::new(MouseButton::Left)),
+    cmds.spawn((
+        Action::new("jump", "Jump", set),
+        BoolActionValue::new(),
+        GamepadBindings::new()
+            .bind(GamepadBinding::new(GamepadBindingSource::South))
+            .bind(GamepadBinding::new(GamepadBindingSource::OtherButton(128))),
+        KeyboardBindings::new().bind(KbB::new(KeyCode::Space).just_pressed()),
+        MouseBindings::new().bind(MouseButtonBinding::new(MouseButton::Left)),
     ));
-    cmds.spawn(ActionBundle::new(
-        "jump_haptic",
-        "Jump Haptic Feedback",
-        set,
-    ))
-    .insert((
-        GamepadHapticOutput::default(),
-        GamepadHapticOutputBindings::default().weak(),
+    cmds.spawn((
+        Action::new("jump_haptic", "Jump Haptic Feedback", set),
+        GamepadHapticOutput::new(),
+        GamepadHapticOutputBindings::new().weak(),
     ));
-    cmds.spawn(Camera3dBundle { ..default() });
+    cmds.spawn(Camera3d::default());
 }
