@@ -540,13 +540,21 @@ pub struct GamepadBindings {
 }
 
 impl GamepadBindings {
-    pub fn add_binding(mut self, binding: GamepadBinding) -> Self {
+    pub fn bind(mut self, binding: GamepadBinding) -> Self {
         self.bindings.push(binding);
         self
     }
 
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+// Helper Methods
+impl GamepadBindings {
+    pub fn add_stick(self, x_axis: GamepadBindingSource, y_axis: GamepadBindingSource) -> Self {
+        self.bind(GamepadBinding::new(x_axis).x_axis().positive())
+            .bind(GamepadBinding::new(y_axis).y_axis().positive())
     }
 }
 

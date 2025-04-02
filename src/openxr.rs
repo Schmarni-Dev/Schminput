@@ -434,6 +434,21 @@ impl OxrBindings {
     }
 }
 
+impl OxrBindings {
+    /// alternative abstraction over the builder pattern
+    pub fn bindngs(
+        self,
+        profile: impl Into<Cow<'static, str>>,
+        bindings: impl IntoIterator<Item = impl Into<Cow<'static, str>>>,
+    ) -> Self {
+        let mut profile = self.interaction_profile(profile);
+        for binding in bindings.into_iter() {
+            profile = profile.binding(binding)
+        }
+        profile.end()
+    }
+}
+
 pub struct OxrActionDeviceBindingBuilder {
     builder: OxrBindings,
     curr_interaction_profile: Cow<'static, str>,

@@ -325,7 +325,7 @@ fn deserialize_v1(
                                 };
                                 w
                             };
-                            gamepad_bindings = gamepad_bindings.add_binding(GamepadBinding {
+                            gamepad_bindings = gamepad_bindings.bind(GamepadBinding {
                                 source,
                                 button_behavior: behavior,
                                 axis,
@@ -492,7 +492,7 @@ fn parse_mouse(
                 };
                 w
             };
-            mouse_bindings = mouse_bindings.add_binding(MouseButtonBinding {
+            mouse_bindings = mouse_bindings.bind(MouseButtonBinding {
                 button,
                 axis,
                 axis_dir,
@@ -568,7 +568,7 @@ fn parse_keyboard(
                 error!("cannot get number for {set_name}.{action_name}.keyboard.multiplier");
                 continue;
             };
-            keyboard_bindings = keyboard_bindings.add_binding(KeyboardBinding {
+            keyboard_bindings = keyboard_bindings.bind(KeyboardBinding {
                 key,
                 axis,
                 axis_dir,

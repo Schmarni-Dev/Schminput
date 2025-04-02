@@ -258,7 +258,7 @@ fn handle_gamepad_rebinding(
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::new().add_binding(GamepadBinding::new(
+                            .insert(GamepadBindings::new().bind(GamepadBinding::new(
                                 GamepadBindingSource::from_button(&input.button),
                             )));
                     }
@@ -299,7 +299,7 @@ fn handle_gamepad_rebinding(
                     )),
                     None => {
                         cmds.entity(action)
-                            .insert(GamepadBindings::new().add_binding(GamepadBinding::new(
+                            .insert(GamepadBindings::new().bind(GamepadBinding::new(
                                 GamepadBindingSource::from_axis(&input.axis),
                             )));
                     }

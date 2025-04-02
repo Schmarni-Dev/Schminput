@@ -43,7 +43,7 @@ fn setup_actions(mut cmds: Commands) {
             Action::new("toggle_movement", "Toggle Movement", core),
             BoolActionValue::new(),
             KeyboardBindings::new()
-                .add_binding(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
+                .bind(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
         ))
         .id();
     let move_action = cmds
@@ -51,14 +51,14 @@ fn setup_actions(mut cmds: Commands) {
             Action::new("move", "Move", player_set),
             Vec2ActionValue::new(),
             KeyboardBindings::new()
-                .add_binding(KeyboardBinding::new(KeyCode::KeyW).y_axis())
-                .add_binding(
+                .bind(KeyboardBinding::new(KeyCode::KeyW).y_axis())
+                .bind(
                     KeyboardBinding::new(KeyCode::KeyS)
                         .y_axis()
                         .negative_axis_dir(),
                 )
-                .add_binding(KeyboardBinding::new(KeyCode::KeyD).x_axis())
-                .add_binding(
+                .bind(KeyboardBinding::new(KeyCode::KeyD).x_axis())
+                .bind(
                     KeyboardBinding::new(KeyCode::KeyA)
                         .x_axis()
                         .negative_axis_dir(),

@@ -8,7 +8,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
     app.add_systems(Startup, setup);
-    app.add_systems(Update, run);
+    app.add_systems(Update, read_actions);
 
     app.run();
 }
@@ -24,80 +24,65 @@ struct JumpHapticAction;
 
 fn setup(mut cmds: Commands) {
     let set = cmds.spawn(ActionSet::new("core", "core")).id();
-    use schminput::keyboard::KeyboardBinding as KbB;
     cmds.spawn((
         Action::new("move", "Move", set),
         Vec2ActionValue::new(),
-        KeyboardBindings::new()
-            .add_binding(KbB::new(KeyCode::KeyW).y_axis().positive_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyS).y_axis().negative_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyA).x_axis().negative_axis_dir())
-            .add_binding(KbB::new(KeyCode::KeyD).x_axis().positive_axis_dir()),
-        GamepadBindings::new()
-            .add_binding(
-                GamepadBinding::new(GamepadBindingSource::LeftStickX)
-                    .x_axis()
-                    .positive(),
-            )
-            .add_binding(
-                GamepadBinding::new(GamepadBindingSource::LeftStickY)
-                    .y_axis()
-                    .positive(),
-            ),
+        KeyboardBindings::new().add_dpad(
+            KeyCode::KeyW,
+            KeyCode::KeyS,
+            KeyCode::KeyA,
+            KeyCode::KeyD,
+        ),
+        GamepadBindings::new().add_stick(
+            GamepadBindingSource::LeftStickX,
+            GamepadBindingSource::LeftStickX,
+        ),
         MoveAction,
     ));
     cmds.spawn((
         Action::new("look", "Look", set),
         Vec2ActionValue::new(),
         MouseBindings::new().delta_motion(),
-        GamepadBindings::new()
-            .add_binding(
-                GamepadBinding::new(GamepadBindingSource::RightStickX)
-                    .x_axis()
-                    .positive(),
-            )
-            .add_binding(
-                GamepadBinding::new(GamepadBindingSource::RightStickY)
-                    .y_axis()
-                    .positive(),
-            ),
+        GamepadBindings::new().add_stick(
+            GamepadBindingSource::RightStickX,
+            GamepadBindingSource::RightStickY,
+        ),
         LookAction,
     ));
     cmds.spawn((
         Action::new("jump", "Jump", set),
-        JumpAction,
+        GamepadBindings::new()
+            .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
+        KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space).just_pressed()),
         BoolActionValue::new(),
-        GamepadBindings::new().add_binding(GamepadBinding::new(GamepadBindingSource::South)),
-        KeyboardBindings::new().add_binding(KbB::new(KeyCode::Space)),
+        JumpAction,
     ));
     cmds.spawn((
         Action::new("jump_haptic", "Jump Haptic Feedback", set),
-        JumpHapticAction,
-        GamepadHapticOutput::new(),
         GamepadHapticOutputBindings::new().weak(),
+        GamepadHapticOutput::new(),
+        JumpHapticAction,
     ));
     cmds.spawn(Camera3d::default());
 }
 
-fn run(
+fn read_actions(
     move_action: Query<&Vec2ActionValue, With<MoveAction>>,
     look_action: Query<&Vec2ActionValue, With<LookAction>>,
     jump_action: Query<&BoolActionValue, With<JumpAction>>,
     mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
 ) {
-    for action in move_action.into_iter() {
-        info!("move: {}", action.any);
-    }
-    for action in look_action.into_iter() {
-        info!("look: {}", action.any);
-    }
-    for action in jump_action.into_iter() {
-        info!("jump: {}", action.any);
-        if action.any {
-            //panics if action doesn't exist
-            jump_haptic_action
-                .single_mut()
-                .add(Duration::from_millis(50), 1.0);
-        }
+    // you might want to use .get_single instead to handle a case where the action was destroyed
+    // (which never happens in the crate itself)
+    info!("move: {}", move_action.single().any);
+    info!("look: {}", look_action.single().any);
+
+    let jumping = jump_action.single().any;
+    info!("jump: {}", jumping);
+    if jumping {
+        // and maybe get_single_mut here
+        jump_haptic_action
+            .single_mut()
+            .add(Duration::from_millis(50), 1.0);
     }
 }

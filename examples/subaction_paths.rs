@@ -18,68 +18,45 @@ fn print_action(
     query: Query<&BoolActionValue>,
     paths: Res<SubactionPaths>,
 ) {
-    // panic!("STOP");
     let b = query.get(action.0).unwrap();
     info!("default: {}", b.any);
 
-    info!(
-        "keyboard: {}",
-        b.get_with_path(&paths.get("/keyboard").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "mouse: {}",
-        b.get_with_path(&paths.get("/mouse/button").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "gamepad: {}",
-        b.get_with_path(&paths.get("/gamepad/*").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
-    info!(
-        "dpad: {}",
-        b.get_with_path(&paths.get("/gamepad/*/dpad").unwrap())
-            .copied()
-            .unwrap_or_default()
-    );
+    info!("keyboard: {}", b.get_or_default(paths.get("/keyboard")));
+    info!("mouse: {}", b.get_or_default(paths.get("/mouse/button")));
+    info!("gamepad: {}", b.get_or_default(paths.get("/gamepad/*")));
+    info!("dpad: {}", b.get_or_default(paths.get("/gamepad/*/dpad")));
     info!(
         "left trigger: {}",
-        b.get_with_path(&paths.get("/gamepad/*/trigger/left").unwrap())
-            .copied()
-            .unwrap_or_default()
+        b.get_or_default(paths.get("/gamepad/*/trigger/left"))
     );
     info!(
         "trigger: {}",
-        b.get_with_path(&paths.get("/gamepad/*/trigger").unwrap())
-            .copied()
-            .unwrap_or_default()
+        b.get_or_default(paths.get("/gamepad/*/trigger"))
     );
 }
 
 fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
     let set = cmds.spawn(ActionSet::new("core", "Core")).id();
-    let mut sub_paths = RequestedSubactionPaths::new();
-    sub_paths.push_path("/mouse/button", &mut paths, &mut cmds);
-    sub_paths.push_path("/keyboard", &mut paths, &mut cmds);
-    sub_paths.push_path("/gamepad/*", &mut paths, &mut cmds);
-    sub_paths.push_path("/gamepad/*/dpad", &mut paths, &mut cmds);
-    sub_paths.push_path("/gamepad/*/trigger/left", &mut paths, &mut cmds);
-    sub_paths.push_path("/gamepad/*/trigger", &mut paths, &mut cmds);
+    let sub_paths = RequestedSubactionPaths::new()
+        .mutate(&mut paths, cmds.reborrow())
+        .push("/mouse/button")
+        .push("/keyboard")
+        .push("/gamepad/*")
+        .push("/gamepad/*/dpad")
+        .push("/gamepad/*/trigger/left")
+        .push("/gamepad/*/trigger")
+        .end();
     let action = cmds
         .spawn((
             Action::new("action", "Action", set),
             BoolActionValue::new(),
-            KeyboardBindings::new().add_binding(KeyboardBinding::new(KeyCode::Space)),
-            MouseBindings::new().add_binding(MouseButtonBinding::new(MouseButton::Left)),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
+            MouseBindings::new().bind(MouseButtonBinding::new(MouseButton::Left)),
             GamepadBindings::new()
-                .add_binding(GamepadBinding::new(GamepadBindingSource::DPadDown))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::South))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::LeftTrigger))
-                .add_binding(GamepadBinding::new(GamepadBindingSource::RightTrigger)),
+                .bind(GamepadBinding::new(GamepadBindingSource::DPadDown))
+                .bind(GamepadBinding::new(GamepadBindingSource::South))
+                .bind(GamepadBinding::new(GamepadBindingSource::LeftTrigger))
+                .bind(GamepadBinding::new(GamepadBindingSource::RightTrigger)),
             sub_paths,
         ))
         .id();

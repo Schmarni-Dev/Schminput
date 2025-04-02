@@ -140,26 +140,24 @@ pub struct KeyboardSubactionPath;
 pub struct KeyboardBindings(pub Vec<KeyboardBinding>);
 
 impl KeyboardBindings {
-    pub fn add_binding(mut self, binding: KeyboardBinding) -> Self {
+    pub fn bind(mut self, binding: KeyboardBinding) -> Self {
         self.0.push(binding);
         self
-    }
-    /// helper function for adding a dpad style binding, internally this just calls add_binding
-    pub fn add_dpad_binding(
-        self,
-        up: KeyCode,
-        down: KeyCode,
-        left: KeyCode,
-        right: KeyCode,
-    ) -> Self {
-        self.add_binding(KeyboardBinding::new(up).y_axis().positive_axis_dir())
-            .add_binding(KeyboardBinding::new(down).y_axis().negative_axis_dir())
-            .add_binding(KeyboardBinding::new(right).x_axis().positive_axis_dir())
-            .add_binding(KeyboardBinding::new(left).x_axis().negative_axis_dir())
     }
 
     pub fn new() -> Self {
         Self::default()
+    }
+}
+
+//helper functions
+impl KeyboardBindings {
+    /// helper function for adding a dpad style binding, internally this just calls add_binding
+    pub fn add_dpad(self, up: KeyCode, down: KeyCode, left: KeyCode, right: KeyCode) -> Self {
+        self.bind(KeyboardBinding::new(up).y_axis().positive_axis_dir())
+            .bind(KeyboardBinding::new(down).y_axis().negative_axis_dir())
+            .bind(KeyboardBinding::new(right).x_axis().positive_axis_dir())
+            .bind(KeyboardBinding::new(left).x_axis().negative_axis_dir())
     }
 }
 

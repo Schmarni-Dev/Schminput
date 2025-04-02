@@ -66,9 +66,9 @@ fn setup(mut cmds: Commands) {
             .interaction_profile(OCULUS_TOUCH_PROFILE)
             .binding("/user/hand/right/input/a/click")
             .end(),
-        KeyboardBindings::new().add_binding(KeyboardBinding::new(KeyCode::Space)),
+        KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
         GamepadBindings::new()
-            .add_binding(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
+            .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
         BoolActionValue::new(),
     ));
     let left_hand = cmds.spawn(HandLeft).id();

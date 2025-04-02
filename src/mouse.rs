@@ -187,7 +187,7 @@ pub struct MouseBindings {
 }
 
 impl MouseBindings {
-    pub fn add_binding(mut self, binding: MouseButtonBinding) -> Self {
+    pub fn bind(mut self, binding: MouseButtonBinding) -> Self {
         self.buttons.push(binding);
         self
     }
