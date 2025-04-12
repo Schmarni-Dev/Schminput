@@ -16,7 +16,7 @@ use bevy_mod_xr::session::{XrPreSessionEnd, XrSessionCreated};
 
 #[cfg(not(target_family = "wasm"))]
 use crate::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
+    binding_modification::{BindingModifications, PremultiplyDeltaSecsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
     xr::SpaceActionValue,
     Action, ActionSet, BoolActionValue, F32ActionValue, SchminputSet, Vec2ActionValue,
@@ -253,11 +253,11 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut SpaceActionValue>,
         &RequestedSubactionPaths,
-        &BindingModifiactions,
+        &BindingModifications,
     )>,
     path_query: Query<&OxrSubactionPath>,
     simple_path_query: Query<Has<IsOxrSubactionPath>>,
-    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
+    modification_query: Query<Has<PremultiplyDeltaSecsModification>>,
     time: Res<Time>,
 ) {
     for (

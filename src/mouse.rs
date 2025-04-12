@@ -1,10 +1,9 @@
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
-    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
-    InputAxisDirection, SchminputSet, Vec2ActionValue,
+    impl_helpers::{BindingValue, ProviderParam},
+    subaction_paths::{SubactionPathCreated, SubactionPathStr},
+    ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
 };
 
 pub struct MousePlugin;
@@ -52,124 +51,85 @@ fn handle_new_subaction_paths(
     }
 }
 
+enum AnyMouseBinding {
+    Button(MouseButtonBinding),
+    Motion(MouseMotionBinding),
+}
+
 #[allow(clippy::type_complexity)]
 pub fn sync_actions(
-    mut action_query: Query<(
-        &MouseBindings,
-        &Action,
-        Option<&mut BoolActionValue>,
-        Option<&mut F32ActionValue>,
-        Option<&mut Vec2ActionValue>,
-        &RequestedSubactionPaths,
-        &BindingModifiactions,
-    )>,
-    set_query: Query<&ActionSet>,
-    path_query: Query<&MouseSubactionPath>,
+    mut query: ProviderParam<&MouseBindings, &MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
     mut delta_motion: EventReader<MouseMotion>,
-    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
-    for (binding, action, mut bool_value, mut f32_value, mut vec2_value, paths, modifications) in
-        &mut action_query
-    {
-        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
-            continue;
-        };
-        let mut pre_mul_delta_time = modifications
-            .all_paths
-            .as_ref()
-            .and_then(|v| modification_query.get(v.0).ok())
-            .unwrap_or_default();
-        for (_, modification) in modifications.per_path.iter().filter(|(p, _)| {
-            path_query
-                .get(p.0)
-                .is_ok_and(|v| *v == MouseSubactionPath::Button)
-        }) {
-            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
-        }
-        for button in &binding.buttons {
-            let paths = paths
+    query.run(
+        |binding, path| {
+            matches!(
+                (binding, path),
+                (
+                    AnyMouseBinding::Motion(MouseMotionBinding {
+                        motion_type: MouseMotionType::DeltaMotion,
+                        ..
+                    }),
+                    MouseSubactionPath::DeltaMotion
+                ) | (AnyMouseBinding::Button(_), MouseSubactionPath::Button)
+                    | (_, MouseSubactionPath::All)
+            )
+        },
+        |bindings| {
+            bindings
+                .buttons
                 .iter()
-                .filter_map(|e| Some((e, path_query.get(e.0).ok()?)))
-                .filter(|(_, p)| {
-                    **p == MouseSubactionPath::Button || **p == MouseSubactionPath::All
-                })
-                .map(|(e, _)| *e);
-
-            let delta_mutiplier = match pre_mul_delta_time {
+                .cloned()
+                .map(AnyMouseBinding::Button)
+                .chain(bindings.movement.map(AnyMouseBinding::Motion))
+                .collect()
+        },
+        |binding, _, _, data| {
+            let time_mutiplier = match data.modifications.premul_delta_time {
                 true => time.delta_secs(),
                 false => 1.0,
             };
-            if let Some(boolean) = bool_value.as_mut() {
-                *boolean.0 |= button.behavior.apply(&input, button.button);
-                for path in paths.clone() {
-                    *boolean.entry_with_path(path).or_default() |=
-                        button.behavior.apply(&input, button.button);
+            match binding {
+                AnyMouseBinding::Button(button) => {
+                    let bool = data
+                        .is_bool
+                        .then(|| button.behavior.apply(&input, button.button));
+                    let f32 = data.is_f32.then(|| {
+                        button.behavior.apply(&input, button.button) as u8 as f32
+                            * button.axis_dir.as_multipier()
+                            * time_mutiplier
+                    });
+                    let vec2 = data.is_vec2.then(|| {
+                        let val = button.behavior.apply(&input, button.button) as u8 as f32;
+                        button
+                            .axis
+                            .new_vec(val * button.axis_dir.as_multipier() * time_mutiplier)
+                    });
+                    vec![BindingValue { vec2, bool, f32 }]
                 }
-            }
-            if let Some(float) = f32_value.as_mut() {
-                let val = button.behavior.apply(&input, button.button) as u8 as f32;
+                AnyMouseBinding::Motion(MouseMotionBinding {
+                    motion_type,
+                    multiplier,
+                }) => match motion_type {
+                    MouseMotionType::DeltaMotion => {
+                        let mut delta = Vec2::ZERO;
+                        for e in delta_motion.read() {
+                            let mut v = e.delta;
+                            v.y *= -1.0;
+                            delta += v * multiplier * time_mutiplier;
+                        }
+                        let bool = data.is_bool.then_some(delta != Vec2::ZERO);
+                        let f32 = data.is_f32.then_some(delta.x);
+                        let vec2 = data.is_vec2.then_some(delta);
 
-                *float.0 += val * button.axis_dir.as_multipier() * delta_mutiplier;
-                for path in paths.clone() {
-                    *float.entry_with_path(path).or_default() +=
-                        val * button.axis_dir.as_multipier() * delta_mutiplier;
-                }
+                        vec![BindingValue { vec2, bool, f32 }]
+                    }
+                },
             }
-            if let Some(vec) = vec2_value.as_mut() {
-                let val = button.behavior.apply(&input, button.button) as u8 as f32;
-
-                *button.axis.vec_axis_mut(vec) +=
-                    val * button.axis_dir.as_multipier() * delta_mutiplier;
-                for path in paths.clone() {
-                    *button
-                        .axis
-                        .vec_axis_mut(vec.entry_with_path(path).or_default()) +=
-                        val * button.axis_dir.as_multipier() * delta_mutiplier;
-                }
-            }
-        }
-
-        let Some(movement) = binding.movement else {
-            continue;
-        };
-        let sub_paths = paths
-            .iter()
-            .filter_map(|e| Some((e, path_query.get(e.0).ok()?)))
-            .filter(|(_, p)| {
-                **p == MouseSubactionPath::DeltaMotion || **p == MouseSubactionPath::All
-            })
-            .map(|(e, _)| *e)
-            .collect::<Vec<_>>();
-
-        if movement.motion_type == MouseMotionType::DeltaMotion {
-            let mut delta = Vec2::ZERO;
-            for e in delta_motion.read() {
-                let mut v = e.delta;
-                v.y *= -1.0;
-                delta += v * movement.multiplier;
-            }
-            if let Some(boolean) = bool_value.as_mut() {
-                *boolean.0 |= delta != Vec2::ZERO;
-                for path in sub_paths.iter() {
-                    *boolean.entry_with_path(*path).or_default() |= delta != Vec2::ZERO;
-                }
-            }
-            if let Some(float) = f32_value.as_mut() {
-                *float.0 += delta.x;
-                for path in sub_paths.iter() {
-                    *float.entry_with_path(*path).or_default() += delta.x;
-                }
-            }
-            if let Some(vec2) = vec2_value.as_mut() {
-                *vec2.0 += delta;
-                for path in sub_paths.iter() {
-                    *vec2.entry_with_path(*path).or_default() += delta;
-                }
-            }
-        }
-    }
+        },
+    );
 }
 
 #[derive(Clone, Debug, Reflect, Component, Copy, PartialEq, Eq)]
