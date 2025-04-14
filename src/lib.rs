@@ -143,28 +143,28 @@ pub struct ActionSet {
     pub name: Cow<'static, str>,
     pub localized_name: Cow<'static, str>,
     pub enabled: bool,
-    // pub priority: u32,
-    // pub blocks_input: bool,
+    pub priority: u32,
+    pub blocks_input: bool,
 }
 
 impl ActionSet {
     pub fn new(
         name: impl Into<Cow<'static, str>>,
         localized_name: impl Into<Cow<'static, str>>,
-        // priority: u32,
+        priority: u32,
     ) -> ActionSet {
         ActionSet {
             name: name.into(),
             localized_name: localized_name.into(),
             enabled: true,
-            // priority,
-            // blocks_input: true,
+            priority,
+            blocks_input: true,
         }
     }
-    // pub fn dont_block_input(mut self) -> Self {
-    //     self.blocks_input = false;
-    //     self
-    // }
+    pub fn dont_block_input(mut self) -> Self {
+        self.blocks_input = false;
+        self
+    }
 }
 
 #[derive(Debug, Clone, Component, Reflect, Deref, Default)]
