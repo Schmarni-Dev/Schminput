@@ -1,8 +1,11 @@
+use std::hash::{DefaultHasher, Hash as _, Hasher};
+
 use crate::{
     binding_modification::{
         BindingModifications, PremultiplyDeltaSecsModification, UnboundedModification,
     },
     prelude::*,
+    priorities::BlockedInputs,
     subaction_paths::SubactionPath,
 };
 use bevy::{
@@ -55,7 +58,7 @@ pub struct ProviderParam<
             Option<&'static mut Vec2ActionValue>,
         ),
     >,
-    pub action_set_query: Query<'w, 's, &'static ActionSet>,
+    pub action_set_query: Query<'w, 's, (&'static ActionSet, Option<&'static BlockedInputs>)>,
     pub binding_modification_query: Query<
         'w,
         's,
@@ -74,6 +77,8 @@ impl<
 {
     pub fn run<BindingData>(
         &mut self,
+        label: &str,
+        binding_id: impl Fn(&BindingData) -> u64,
         path_matches: impl Fn(
             &BindingData,
             &<<PathData as QueryData>::ReadOnly as WorldQuery>::Item<'_>,
@@ -87,15 +92,19 @@ impl<
             &GenericBindingData,
         ) -> Vec<BindingValue>,
     ) {
+        let label_id = {
+            let mut hasher = DefaultHasher::new();
+            label.hash(&mut hasher);
+            hasher.finish()
+        };
         let _span = debug_span!("ProviderHelper::run").entered();
         for (mut data, action, req_sub_paths, modifications, mut bool, mut f32, mut vec2) in
             self.action_query.iter_mut()
         {
-            if !(self
-                .action_set_query
-                .get(action.set)
-                .is_ok_and(|v| v.enabled))
-            {
+            let Ok((set, input)) = self.action_set_query.get(action.set) else {
+                continue;
+            };
+            if !set.enabled {
                 continue;
             };
             let (pre_mul_delta_time_all, unbounded_all) = modifications
@@ -106,12 +115,20 @@ impl<
 
             let binding_iter = bindings(&data);
 
-            // bevy overwrites the map function... *sigh*
             let all_binding_values = binding_iter
                 .iter()
                 .flat_map(|binding_data| {
+                    if let Some(input) = input.as_ref() {
+                        if input
+                            .0
+                            .get(&label_id)
+                            .is_some_and(|v| v.contains(&binding_id(binding_data)))
+                        {
+                            return Vec::new();
+                        }
+                    }
                     let mut binding_modifications = Modifications {
-                        inner: &modifications,
+                        inner: modifications,
                         premul_delta_time: pre_mul_delta_time_all,
                         unbounded: unbounded_all,
                     };
@@ -119,7 +136,7 @@ impl<
                         let Ok(path_data) = self.path_query.get(*mod_sub_path) else {
                             continue;
                         };
-                        if path_matches(&binding_data, &path_data) {
+                        if path_matches(binding_data, &path_data) {
                             let Ok((pre_mul_delta_time, unbounded)) =
                                 self.binding_modification_query.get(modification.0)
                             else {
@@ -131,7 +148,7 @@ impl<
                     }
 
                     update_for_binding(
-                        &binding_data,
+                        binding_data,
                         &mut data,
                         None,
                         &GenericBindingData {
@@ -159,12 +176,21 @@ impl<
                 };
                 let mut out = Vec::<BindingValue>::new();
                 for binding in binding_iter.iter() {
+                    if let Some(input) = input {
+                        if input
+                            .0
+                            .get(&label_id)
+                            .is_some_and(|v| v.contains(&binding_id(binding)))
+                        {
+                            continue;
+                        }
+                    }
                     if !path_matches(binding, &path_data) {
                         continue;
                     }
                     // TODO: precompute this
                     let mut binding_modifications = Modifications {
-                        inner: &modifications,
+                        inner: modifications,
                         premul_delta_time: pre_mul_delta_time_all,
                         unbounded: unbounded_all,
                     };

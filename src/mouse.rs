@@ -1,9 +1,9 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
-    impl_helpers::{BindingValue, ProviderParam},
-    subaction_paths::{SubactionPathCreated, SubactionPathStr},
-    ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
+    impl_helpers::{BindingValue, ProviderParam}, priorities::PriorityAppExt as _, subaction_paths::{SubactionPathCreated, SubactionPathStr}, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet
 };
 
 pub struct MousePlugin;
@@ -18,7 +18,34 @@ impl Plugin for MousePlugin {
             PreUpdate,
             handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
         );
+        app.add_binding_id_system(
+            "schminput:mouse",
+            |entity: In<Entity>, query: Query<&MouseBindings>| {
+                let Ok(bindings) = query.get(entity.0) else {
+                    return Vec::new();
+                };
+                bindings
+                    .buttons
+                    .iter()
+                    .cloned()
+                    .map(AnyMouseBinding::Button)
+                    .chain(bindings.movement.map(AnyMouseBinding::Motion))
+                    .map(|v| get_binding_id(&v))
+                    .collect()
+            },
+        );
     }
+}
+
+fn get_binding_id(binding: &AnyMouseBinding) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    match binding {
+        AnyMouseBinding::Button(MouseButtonBinding { button, .. }) => button.hash(&mut hasher),
+        AnyMouseBinding::Motion(MouseMotionBinding { motion_type, .. }) => {
+            motion_type.hash(&mut hasher)
+        }
+    }
+    hasher.finish()
 }
 
 fn handle_new_subaction_paths(
@@ -64,6 +91,8 @@ pub fn sync_actions(
     mut delta_motion: EventReader<MouseMotion>,
 ) {
     query.run(
+        "schminput:mouse",
+        get_binding_id,
         |binding, path| {
             matches!(
                 (binding, path),
@@ -248,7 +277,7 @@ impl MouseMotionBinding {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, Reflect, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, Debug, Reflect, PartialEq, Eq, Hash)]
 pub enum MouseMotionType {
     #[default]
     DeltaMotion,

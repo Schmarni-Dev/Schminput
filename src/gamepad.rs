@@ -1,4 +1,7 @@
-use std::time::Duration;
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    time::Duration,
+};
 
 use atomicow::CowArc;
 use bevy::{
@@ -9,6 +12,7 @@ use bevy::{
 use crate::{
     impl_helpers::{BindingValue, GenericBindingData, ProviderParam},
     prelude::RequestedSubactionPaths,
+    priorities::PriorityAppExt as _,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
     Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
 };
@@ -35,7 +39,22 @@ impl Plugin for GamepadPlugin {
             PreUpdate,
             handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
         );
+        app.add_binding_id_system(
+            "schminput:gamepad",
+            |entity: In<Entity>, query: Query<&GamepadBindings>| {
+                let Ok(bindings) = query.get(entity.0) else {
+                    return Vec::new();
+                };
+                bindings.bindings.iter().map(get_binding_id).collect()
+            },
+        );
     }
+}
+
+fn get_binding_id(binding: &GamepadBinding) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    binding.source.hash(&mut hasher);
+    hasher.finish()
 }
 
 fn handle_new_subaction_paths(
@@ -252,6 +271,8 @@ fn sync_actions(
     time: Res<Time>,
 ) {
     query.run(
+        "schminput:gamepad",
+        get_binding_id,
         |binding: &GamepadBinding, (_, target, target_side)| {
             target.is_none_or(|target| target.matches(&binding.source, *target_side))
         },

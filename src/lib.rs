@@ -6,6 +6,7 @@ pub mod mouse;
 #[cfg(feature = "xr")]
 pub mod openxr;
 pub mod prelude;
+pub mod priorities;
 pub mod subaction_paths;
 #[cfg(feature = "xr")]
 pub mod xr;
@@ -18,12 +19,14 @@ use bevy::{
     prelude::*,
 };
 use binding_modification::BindingModifications;
+use priorities::PrioritiesPlugin;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
 pub enum SchminputSet {
     HandleNewSubactionPaths,
     ClearValues,
+    CalculateBindingCollisions,
     SyncInputActions,
     SyncOutputActions,
 }
@@ -39,6 +42,7 @@ impl Plugin for SchminputPlugin {
             (
                 SchminputSet::HandleNewSubactionPaths,
                 SchminputSet::ClearValues,
+                SchminputSet::CalculateBindingCollisions,
                 SchminputSet::SyncInputActions,
             )
                 .chain(),
@@ -75,6 +79,7 @@ impl PluginGroup for DefaultSchminputPlugins {
         let g = PluginGroupBuilder::start::<DefaultSchminputPlugins>()
             .add(SchminputPlugin)
             .add(SubactionPathPlugin)
+            .add(PrioritiesPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
@@ -144,7 +149,9 @@ pub struct ActionSet {
     pub localized_name: Cow<'static, str>,
     pub enabled: bool,
     pub priority: u32,
-    pub blocks_input: bool,
+    /// when true the action set will not block input for other sets
+    /// and other sets won't block input for this action set
+    pub transparent: bool,
 }
 
 impl ActionSet {
@@ -158,11 +165,13 @@ impl ActionSet {
             localized_name: localized_name.into(),
             enabled: true,
             priority,
-            blocks_input: true,
+            transparent: false,
         }
     }
-    pub fn dont_block_input(mut self) -> Self {
-        self.blocks_input = false;
+    /// when called the action set will not block input for other sets
+    /// and other sets won't block input for this action set
+    pub fn transparent(mut self) -> Self {
+        self.transparent = true;
         self
     }
 }

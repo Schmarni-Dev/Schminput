@@ -98,9 +98,9 @@ fn setup(mut cmds: Commands) {
                 .interaction_profile(OCULUS_TOUCH_PROFILE)
                 .binding("/user/hand/left/input/y/click")
                 .end(),
-            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Tab)),
             GamepadBindings::new()
-                .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
+                .bind(GamepadBinding::new(GamepadBindingSource::North).button_just_pressed()),
             BoolActionValue::new(),
         ))
         .id();
@@ -150,7 +150,7 @@ fn toggle_blocking(
     let v = action_query.get(actions.toggle_blocking).unwrap().any;
     if v && !*last {
         let mut set = set_query.get_mut(actions.set).unwrap();
-        set.blocks_input = !set.blocks_input;
+        set.transparent = !set.transparent;
     }
     *last = v;
 }

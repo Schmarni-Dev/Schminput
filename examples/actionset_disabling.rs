@@ -36,14 +36,13 @@ fn print_action(action: Res<Actions>, query: Query<&Vec2ActionValue>) {
 }
 
 fn setup_actions(mut cmds: Commands) {
-    let core = cmds.spawn(ActionSet::new("core", "Core")).id();
-    let player_set = cmds.spawn(ActionSet::new("move", "Movement")).id();
+    let core = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
+    let player_set = cmds.spawn(ActionSet::new("move", "Movement", 0)).id();
     let toggle = cmds
         .spawn((
             Action::new("toggle_movement", "Toggle Movement", core),
             BoolActionValue::new(),
-            KeyboardBindings::new()
-                .bind(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Tab).just_pressed()),
         ))
         .id();
     let move_action = cmds

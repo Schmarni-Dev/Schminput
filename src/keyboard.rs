@@ -1,7 +1,10 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use bevy::prelude::*;
 
 use crate::{
     impl_helpers::{BindingValue, ProviderParam},
+    priorities::PriorityAppExt,
     subaction_paths::{SubactionPathCreated, SubactionPathStr},
     ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
 };
@@ -16,7 +19,22 @@ impl Plugin for KeyboardPlugin {
             PreUpdate,
             handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
         );
+        app.add_binding_id_system(
+            "schminput:keyboard",
+            |entity: In<Entity>, query: Query<&KeyboardBindings>| {
+                let Ok(bindings) = query.get(entity.0) else {
+                    return Vec::new();
+                };
+                bindings.0.iter().map(get_binding_id).collect()
+            },
+        );
     }
+}
+
+fn get_binding_id(binding: &KeyboardBinding) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    binding.key.hash(&mut hasher);
+    hasher.finish()
 }
 
 pub fn handle_new_subaction_paths(
@@ -41,6 +59,8 @@ pub fn sync_actions(
     input: Res<ButtonInput<KeyCode>>,
 ) {
     query.run(
+        "schminput:keyboard",
+        get_binding_id,
         |_, v| *v,
         |bindings| bindings.0.clone(),
         |binding, _, _, data| {

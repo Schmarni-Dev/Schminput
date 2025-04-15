@@ -23,7 +23,7 @@ struct JumpAction;
 struct JumpHapticAction;
 
 fn setup(mut cmds: Commands) {
-    let set = cmds.spawn(ActionSet::new("core", "core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "core", 0)).id();
     cmds.spawn((
         Action::new("move", "Move", set),
         Vec2ActionValue::new(),

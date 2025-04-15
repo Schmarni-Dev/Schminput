@@ -124,7 +124,7 @@ fn sync_non_blocking_action_sets(world: &mut World) {
     let query = world
         .query::<(&OxrActionSet, &ActionSet, &ActionsInSet)>()
         .iter(world)
-        .filter(|(_, v, _)| v.enabled && !v.blocks_input)
+        .filter(|(_, v, _)| v.enabled && v.transparent)
         .map(|(set, _, actions)| (set.0.clone(), actions.0.iter().copied().collect::<Vec<_>>()))
         .collect::<Vec<_>>();
 
@@ -151,7 +151,7 @@ fn sync_action_sets(
 ) {
     let sets = query
         .iter()
-        .filter(|(_, v)| v.enabled && v.blocks_input)
+        .filter(|(_, v)| v.enabled && !v.transparent)
         .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
     sync_set.send_batch(sets);
 }
@@ -274,7 +274,7 @@ fn sync_input_actions(world: &mut World) {
     let entities = world
         .query::<(&ActionSet, &ActionsInSet)>()
         .iter(world)
-        .filter(|&(set, _)| set.enabled && set.blocks_input)
+        .filter(|&(set, _)| set.enabled && !set.transparent)
         .flat_map(|(_, actions)| actions.0.iter())
         .copied()
         .collect::<Vec<_>>();

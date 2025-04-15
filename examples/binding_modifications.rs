@@ -26,7 +26,7 @@ struct Actions {
 }
 
 fn setup(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
     let thumbstick_path = paths.get_or_create_path("/gamepad/*/thumbstick", &mut cmds);
     let modification_entity = cmds.spawn(PremultiplyDeltaSecsModification).id();
     let action_1 = cmds
