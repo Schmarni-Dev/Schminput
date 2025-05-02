@@ -90,7 +90,7 @@ fn request_save_config(
             }
         }
     };
-    request_serialize.send(SerializeSchminputConfig { base_config: text });
+    request_serialize.write(SerializeSchminputConfig { base_config: text });
 }
 fn save_config(
     config_path: Res<ConfigFilePath>,
@@ -112,7 +112,7 @@ fn save_config(
         if let Err(err) = fs::write(&path, &output.output) {
             error!("unable to write config file: {err}");
         }
-        finnish_signal.send_default();
+        finnish_signal.write_default();
     }
 }
 fn load_config(
@@ -134,7 +134,7 @@ fn load_config(
             return;
         }
     };
-    request_deserialize.send(DeserializeSchminputConfig { config: contents });
+    request_deserialize.write(DeserializeSchminputConfig { config: contents });
 
     // if let Some(dir) = path.parent() {
     //     fs::create_dir_all(dir);

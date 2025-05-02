@@ -107,7 +107,7 @@ pub fn draw_rebinding_ui(
         CollapsingHeader::new(&*action_set.localized_name)
             .default_open(true)
             .show(ui, |ui| {
-                let mut iter = action_query.iter_many_mut(actions.0.iter());
+                let mut iter = action_query.iter_many_mut(actions.iter());
                 #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
                 while let Some((
                     entity,
@@ -128,7 +128,7 @@ pub fn draw_rebinding_ui(
                                 entity,
                                 "Keyboard:",
                                 {
-                                    request_keyboard.send(RequestKeyboardRebinding::NewBinding {
+                                    request_keyboard.write(RequestKeyboardRebinding::NewBinding {
                                         action: entity,
                                     });
                                 },
@@ -156,7 +156,7 @@ pub fn draw_rebinding_ui(
                                 entity,
                                 "Mouse Motion:",
                                 {
-                                    mouse_rebind.send(RequestMouseRebinding::NewMotionBinding {
+                                    mouse_rebind.write(RequestMouseRebinding::NewMotionBinding {
                                         action: entity,
                                     });
                                 },
@@ -179,7 +179,7 @@ pub fn draw_rebinding_ui(
                                 entity,
                                 "Mouse Button:",
                                 {
-                                    mouse_rebind.send(RequestMouseRebinding::NewButtonBinding {
+                                    mouse_rebind.write(RequestMouseRebinding::NewButtonBinding {
                                         action: entity,
                                     });
                                 },
@@ -208,7 +208,7 @@ pub fn draw_rebinding_ui(
                                 entity,
                                 "Gamepad:",
                                 {
-                                    gamepad_rebind.send(RequestGamepadRebinding::NewBinding {
+                                    gamepad_rebind.write(RequestGamepadRebinding::NewBinding {
                                         action: entity,
                                     });
                                 },
@@ -319,17 +319,17 @@ pub fn draw_rebinding_ui(
             });
     }
     if ui.button("Reset All Bindings").clicked() {
-        reset_bindings.send(ResetToDefautlBindings::All);
+        reset_bindings.write(ResetToDefautlBindings::All);
     }
     if ui.button("Save All Bindings").clicked() {
-        request_save.send_default();
+        request_save.write_default();
     }
     if ui.button("Load All Bindings").clicked() {
-        request_load.send_default();
+        request_load.write_default();
     }
     #[cfg(feature = "xr")]
     if ui.button("Restart Xr Session").clicked() {
-        request_session_restart.send_default();
+        request_session_restart.write_default();
     }
 }
 
@@ -355,7 +355,7 @@ pub fn draw_openxr_interaction_profile(
         ui.horizontal(|ui| {
             ui.label(RichText::new(&**profile));
             if ui.button(get_delete_text()).clicked() {
-                request.send(RequestOpenXrRebinding::DeleteProfile {
+                request.write(RequestOpenXrRebinding::DeleteProfile {
                     profile: profile.clone(),
                     action,
                 });
@@ -366,7 +366,7 @@ pub fn draw_openxr_interaction_profile(
         for (binding_index, binding) in bindings.iter_mut().enumerate() {
             ui.text_edit_singleline(binding);
             if ui.button(get_delete_text()).clicked() {
-                request.send(RequestOpenXrRebinding::DeleteBinding {
+                request.write(RequestOpenXrRebinding::DeleteBinding {
                     profile: profile.clone(),
                     binding_index,
                     action,
@@ -399,13 +399,13 @@ pub fn draw_gamepad_binding(
                 .button(RichText::new(format!("{}", binding.source)).monospace())
                 .clicked()
             {
-                gamepad_rebind.send(RequestGamepadRebinding::Rebind {
+                gamepad_rebind.write(RequestGamepadRebinding::Rebind {
                     binding_index,
                     action,
                 });
             }
             if ui.button(get_delete_text()).clicked() {
-                gamepad_rebind.send(RequestGamepadRebinding::DeleteBinding {
+                gamepad_rebind.write(RequestGamepadRebinding::DeleteBinding {
                     binding_index,
                     action,
                 });
@@ -446,13 +446,13 @@ pub fn draw_mouse_button_binding(
                 .button(RichText::new(format!("{:?}", binding.button)).monospace())
                 .clicked()
             {
-                mouse_rebind.send(RequestMouseRebinding::RebindButton {
+                mouse_rebind.write(RequestMouseRebinding::RebindButton {
                     binding_index,
                     action,
                 });
             }
             if ui.button(get_delete_text()).clicked() {
-                mouse_rebind.send(RequestMouseRebinding::DeleteButtonBinding {
+                mouse_rebind.write(RequestMouseRebinding::DeleteButtonBinding {
                     binding_index,
                     action,
                 });
@@ -483,7 +483,7 @@ pub fn draw_mouse_moiton_binding(
                 .update_while_editing(false),
         );
         if ui.button(get_delete_text()).clicked() {
-            mouse_rebind.send(RequestMouseRebinding::DeleteMotionBinding { action });
+            mouse_rebind.write(RequestMouseRebinding::DeleteMotionBinding { action });
         }
     });
 }
@@ -515,13 +515,13 @@ pub fn draw_keyboard_binding(
                 )
                 .clicked()
             {
-                request_keyboard.send(RequestKeyboardRebinding::RebindKey {
+                request_keyboard.write(RequestKeyboardRebinding::RebindKey {
                     binding_index,
                     action,
                 });
             }
             if ui.button(get_delete_text()).clicked() {
-                request_keyboard.send(RequestKeyboardRebinding::DeleteBinding {
+                request_keyboard.write(RequestKeyboardRebinding::DeleteBinding {
                     binding_index,
                     action,
                 });
