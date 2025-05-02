@@ -13,11 +13,7 @@ pub mod xr;
 
 use std::{borrow::Cow, fmt::Display, hash::Hash, mem};
 
-use bevy::{
-    app::PluginGroupBuilder,
-    ecs::{component::ComponentId, entity::EntityHashSet, world::DeferredWorld},
-    prelude::*,
-};
+use bevy::{app::PluginGroupBuilder, ecs::entity::EntityHashSet, prelude::*};
 use binding_modification::BindingModifications;
 use priorities::PrioritiesPlugin;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
@@ -92,39 +88,13 @@ impl PluginGroup for DefaultSchminputPlugins {
 }
 
 #[derive(Debug, Clone, Reflect, Component)]
-#[component(on_add = on_action_add)]
-#[component(on_remove = on_action_remove)]
 #[require(RequestedSubactionPaths, BindingModifications)]
+#[relationship(relationship_target = ActionsInSet)]
 pub struct Action {
+    #[relationship]
     pub set: Entity,
     pub localized_name: Cow<'static, str>,
     pub name: Cow<'static, str>,
-}
-
-fn on_action_add(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
-    let Some(set_entity) = world.entity(entity).get::<Action>().map(|a| a.set) else {
-        error!("action not on entity, this should be unreachable!");
-        return;
-    };
-    let mut tmp_entity = world.entity_mut(set_entity);
-    let Some(mut set) = tmp_entity.get_mut::<ActionsInSet>() else {
-        error!("invalid action set {set_entity:?}");
-        return;
-    };
-    set.0.insert(entity);
-}
-
-fn on_action_remove(mut world: DeferredWorld, entity: Entity, _component_id: ComponentId) {
-    let Some(set_entity) = world.entity(entity).get::<Action>().map(|a| a.set) else {
-        error!("action not on entity, this should be unreachable!");
-        return;
-    };
-    let mut tmp_entity = world.entity_mut(set_entity);
-    let Some(mut set) = tmp_entity.get_mut::<ActionsInSet>() else {
-        error!("invalid action set {set_entity:?}");
-        return;
-    };
-    set.0.remove(&entity);
 }
 
 impl Action {
@@ -142,7 +112,6 @@ impl Action {
 }
 
 #[derive(Debug, Clone, Reflect, Component)]
-#[component(on_remove = on_action_remove)]
 #[require(ActionsInSet)]
 pub struct ActionSet {
     pub name: Cow<'static, str>,
@@ -177,7 +146,8 @@ impl ActionSet {
 }
 
 #[derive(Debug, Clone, Component, Reflect, Deref, Default)]
-pub struct ActionsInSet(pub EntityHashSet);
+#[relationship_target(relationship = Action, linked_spawn)]
+pub struct ActionsInSet(EntityHashSet);
 
 /// +X: Right, +Y: Up
 #[derive(Debug, Clone, Component, Reflect, Deref, DerefMut, Default)]

@@ -182,7 +182,7 @@ fn sync_haptics(
         for binding in bindings.bindings.iter() {
             for (gamepad, _, _) in gamepads.iter() {
                 for e in &out.haptic_feedbacks.any {
-                    gamepad_haptic_event.send(match e {
+                    gamepad_haptic_event.write(match e {
                         GamepadHapticValue::Add {
                             duration,
                             intensity,
@@ -209,7 +209,7 @@ fn sync_haptics(
                                 .get_with_path(sub_path)
                                 .unwrap_or(&Vec::new())
                             {
-                                gamepad_haptic_event.send(match e {
+                                gamepad_haptic_event.write(match e {
                                     GamepadHapticValue::Add {
                                         duration,
                                         intensity,
@@ -238,7 +238,7 @@ fn sync_haptics(
                             else {
                                 continue;
                             };
-                            gamepad_haptic_event.send(match e {
+                            gamepad_haptic_event.write(match e {
                                 GamepadHapticValue::Add {
                                     duration,
                                     intensity,

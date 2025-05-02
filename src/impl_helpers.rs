@@ -10,7 +10,7 @@ use crate::{
 };
 use bevy::{
     ecs::{
-        query::{QueryData, QueryFilter, WorldQuery},
+        query::{QueryData, QueryFilter},
         system::SystemParam,
     },
     prelude::*,
@@ -81,14 +81,14 @@ impl<
         binding_id: impl Fn(&BindingData) -> u64,
         path_matches: impl Fn(
             &BindingData,
-            &<<PathData as QueryData>::ReadOnly as WorldQuery>::Item<'_>,
+            &<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_>,
         ) -> bool,
-        bindings: impl Fn(&<ActionData as WorldQuery>::Item<'_>) -> Vec<BindingData>,
+        bindings: impl Fn(&<ActionData as QueryData>::Item<'_>) -> Vec<BindingData>,
         mut update_for_binding: impl FnMut(
             &BindingData,
-            &mut <ActionData as WorldQuery>::Item<'_>,
+            &mut <ActionData as QueryData>::Item<'_>,
 
-            Option<&<<PathData as QueryData>::ReadOnly as WorldQuery>::Item<'_>>,
+            Option<&<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_>>,
             &GenericBindingData,
         ) -> Vec<BindingValue>,
     ) {

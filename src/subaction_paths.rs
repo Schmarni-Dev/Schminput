@@ -1,5 +1,5 @@
 use atomicow::CowArc;
-use bevy::{ecs::entity::EntityHash, prelude::*, utils::hashbrown::HashMap};
+use bevy::{ecs::entity::EntityHash, platform::collections::{hash_map::Entry, HashMap}, prelude::*};
 
 use crate::SchminputSet;
 
@@ -20,7 +20,7 @@ fn emit_new_path_events(
     mut paths: ResMut<SubactionPaths>,
     mut e: EventWriter<SubactionPathCreated>,
 ) {
-    e.send_batch(paths.new_paths.iter().copied().map(SubactionPathCreated));
+    e.write_batch(paths.new_paths.iter().copied().map(SubactionPathCreated));
     paths.new_paths.clear();
 }
 
@@ -142,7 +142,7 @@ impl<T: Default> SubactionPathMap<T> {
     pub fn entry_with_path(
         &mut self,
         path: SubactionPath,
-    ) -> bevy::utils::hashbrown::hash_map::Entry<'_, SubactionPath, T, EntityHash> {
+    ) -> Entry<'_, SubactionPath, T, EntityHash> {
         self.paths.entry(path)
     }
 

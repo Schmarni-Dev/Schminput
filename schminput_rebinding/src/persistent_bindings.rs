@@ -84,7 +84,7 @@ fn serialize_v1(
         let doc = &mut owned_doc;
         doc.entry("version").or_insert(toml_edit::value(1i64));
         for (action_set, actions) in &set_query {
-            let mut iter = action_query.iter_many_mut(actions.0.iter());
+            let mut iter = action_query.iter_many_mut(actions.iter());
             #[cfg_attr(not(feature = "xr"), allow(unused_variables))]
             while let Some((keyboard, mouse, gamepad, gamepad_haptics, openxr, action)) =
                 iter.fetch_next()
@@ -187,7 +187,7 @@ fn serialize_v1(
                 }
             }
         }
-        respone.send(FinnishedSchminputConfigSerialization {
+        respone.write(FinnishedSchminputConfigSerialization {
             output: owned_doc.to_string(),
         });
     }
@@ -237,7 +237,7 @@ fn deserialize_v1(
                     continue;
                 };
                 let Some(action_entity) = action_query
-                    .iter_many_mut(actions.0.iter())
+                    .iter_many_mut(actions.iter())
                     .find(|(_, action)| action.name == action_name)
                     .map(|(e, _)| e)
                 else {
@@ -377,7 +377,7 @@ fn deserialize_v1(
                 }
             }
         }
-        respone.send(FinnishedSchminputConfigDeserialization);
+        respone.write(FinnishedSchminputConfigDeserialization);
     }
 }
 #[cfg(feature = "xr")]

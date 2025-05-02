@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::{platform::collections::HashMap, prelude::*};
 #[cfg(not(target_family = "wasm"))]
 use bevy_mod_openxr::{
     action_binding::{OxrSendActionBindings, OxrSuggestActionBinding},
@@ -9,7 +9,6 @@ use bevy_mod_openxr::{
     helper_traits::ToVec2 as _,
     resources::OxrInstance,
     session::OxrSession,
-    spaces::OxrSpaceSyncSet,
 };
 #[cfg(not(target_family = "wasm"))]
 use bevy_mod_xr::session::{XrPreSessionEnd, XrSessionCreated};
@@ -32,6 +31,7 @@ impl Plugin for OxrInputPlugin {
     fn build(&self, app: &mut App) {
         use crate::xr::attach_spaces_to_target_entities;
         use bevy_mod_openxr::{openxr_session_available, openxr_session_running};
+        use bevy_mod_xr::spaces::XrSpaceSyncSet;
 
         app.add_systems(
             PreUpdate,
@@ -44,7 +44,7 @@ impl Plugin for OxrInputPlugin {
                 .chain()
                 .run_if(openxr_session_running)
                 .in_set(SchminputSet::SyncInputActions)
-                .before(OxrSpaceSyncSet),
+                .before(XrSpaceSyncSet),
         );
         app.add_systems(
             XrSessionCreated,
@@ -153,13 +153,13 @@ fn sync_action_sets(
         .iter()
         .filter(|(_, v)| v.enabled && !v.transparent)
         .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
-    sync_set.send_batch(sets);
+    sync_set.write_batch(sets);
 }
 
 #[cfg(not(target_family = "wasm"))]
 fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
     for set in &query {
-        suggest.send(OxrAttachActionSet(set.0.clone()));
+        suggest.write(OxrAttachActionSet(set.0.clone()));
     }
 }
 
@@ -171,7 +171,7 @@ fn suggest_bindings(
 ) {
     for (bindings, action, entity) in &query {
         for (profile, bindings) in bindings.bindings.iter() {
-            suggest.send(OxrSuggestActionBinding {
+            suggest.write(OxrSuggestActionBinding {
                 action: action.as_raw(),
                 interaction_profile: profile.clone(),
                 bindings: bindings.clone(),
@@ -198,6 +198,8 @@ fn create_input_actions(
     action_set_query: Query<&ActionSet>,
     instance: Res<OxrInstance>,
 ) {
+    use bevy::platform::collections::HashMap;
+
     let mut set_map: HashMap<Entity, openxr::ActionSet> = HashMap::new();
     for (entity, action, requested_subaction_paths, has_bool, has_vec2, has_f32, has_space) in
         &query

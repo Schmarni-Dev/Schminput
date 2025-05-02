@@ -15,9 +15,9 @@ repository = "https://github.com/Schmarni-Dev/Schminput/"
 
 [workspace.dependencies]
 schminput = { path = ".", version = "0.2.0" }
-bevy = { version = "0.15", default-features = false }
-bevy_mod_xr = "0.2.0"
-bevy_mod_openxr = "0.2.0"
+bevy = { version = "0.16", default-features = false }
+bevy_mod_xr = "0.3.0"
+bevy_mod_openxr = "0.3.0"
 openxr = { version = "0.19", default-features = false }
 
 [lints.clippy]
@@ -29,12 +29,12 @@ name = "xr"
 required-features = ["xr"]
 
 [features]
-default = ["xr"]
+default = []
 xr = ["dep:bevy_mod_openxr", "dep:bevy_mod_xr", "dep:openxr"]
 
 [dependencies]
 atomicow = "1.0.0"
-bevy.workspace = true
+bevy = { workspace = true, features = ["bevy_log"] }
 bevy_mod_xr = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]

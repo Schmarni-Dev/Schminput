@@ -1,9 +1,7 @@
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use bevy::{
-    ecs::{entity::EntityHashMap, system::SystemId},
-    prelude::*,
-    utils::{HashMap, HashSet},
+    ecs::{entity::EntityHashMap, system::SystemId}, platform::collections::{HashMap, HashSet}, prelude::*
 };
 
 use crate::{ActionSet, ActionsInSet, SchminputSet};
@@ -31,7 +29,7 @@ fn system(world: &mut World) {
     for (entity, actions) in query.into_iter() {
         for action in actions.into_iter() {
             for (binding_type_id, system) in binding_id_systems.0.iter() {
-                let id = match world.run_system_with_input(*system, action) {
+                let id = match world.run_system_with(*system, action) {
                     Ok(id) => id,
                     Err(err) => {
                         error!("error while running binding id system: {err}");

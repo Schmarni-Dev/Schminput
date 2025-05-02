@@ -20,13 +20,13 @@ impl Plugin for SchmebindingXrUtilsPlugin {
 }
 
 fn restart_session(mut event: EventWriter<XrCreateSessionEvent>, mut cmds: Commands) {
-    event.send_default();
+    event.write_default();
     cmds.remove_resource::<ShouldRestart>();
     info!("restarting session");
 }
 
 fn on_restart_event(mut cmds: Commands, mut event: EventWriter<XrRequestExitEvent>) {
-    event.send_default();
+    event.write_default();
     cmds.insert_resource(ShouldRestart(false));
     info!("on restart event");
 }
