@@ -1,10 +1,12 @@
+use std::hash::{DefaultHasher, Hash, Hasher};
+
 use bevy::prelude::*;
 
 use crate::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
-    subaction_paths::{RequestedSubactionPaths, SubactionPathCreated, SubactionPathStr},
-    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
-    InputAxisDirection, SchminputSet, Vec2ActionValue,
+    impl_helpers::{BindingValue, ProviderParam},
+    priorities::PriorityAppExt,
+    subaction_paths::{SubactionPathCreated, SubactionPathStr},
+    ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
 };
 
 impl Plugin for KeyboardPlugin {
@@ -17,7 +19,22 @@ impl Plugin for KeyboardPlugin {
             PreUpdate,
             handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
         );
+        app.add_binding_id_system(
+            "schminput:keyboard",
+            |entity: In<Entity>, query: Query<&KeyboardBindings>| {
+                let Ok(bindings) = query.get(entity.0) else {
+                    return Vec::new();
+                };
+                bindings.0.iter().map(get_binding_id).collect()
+            },
+        );
     }
+}
+
+fn get_binding_id(binding: &KeyboardBinding) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    binding.key.hash(&mut hasher);
+    hasher.finish()
 }
 
 pub fn handle_new_subaction_paths(
@@ -37,99 +54,45 @@ pub fn handle_new_subaction_paths(
 
 #[allow(clippy::type_complexity)]
 pub fn sync_actions(
-    mut action_query: Query<(
-        &KeyboardBindings,
-        &Action,
-        Option<&mut BoolActionValue>,
-        Option<&mut F32ActionValue>,
-        Option<&mut Vec2ActionValue>,
-        &RequestedSubactionPaths,
-        &BindingModifiactions,
-    )>,
-    path_query: Query<Has<KeyboardSubactionPath>>,
-    set_query: Query<&ActionSet>,
+    mut query: ProviderParam<&KeyboardBindings, Has<KeyboardSubactionPath>>,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
 ) {
-    for (
-        bindings,
-        action,
-        mut bool_value,
-        mut f32_value,
-        mut vec2_value,
-        requested_paths,
-        modifications,
-    ) in &mut action_query
-    {
-        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
-            continue;
-        };
-        let paths = requested_paths
-            .0
-            .iter()
-            .filter(|p| path_query.get(p.0).unwrap_or(false))
-            .collect::<Vec<_>>();
-        let mut pre_mul_delta_time = modifications
-            .all_paths
-            .as_ref()
-            .and_then(|v| modification_query.get(v.0).ok())
-            .unwrap_or_default();
-        for (_, modification) in modifications
-            .per_path
-            .iter()
-            .filter(|(p, _)| path_query.get(p.0).unwrap_or(false))
-        {
-            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
-        }
-        let delta_multiplier = match pre_mul_delta_time {
-            true => time.delta_secs(),
-            false => 1.0,
-        };
-        for binding in &bindings.0 {
-            if let Some(button) = bool_value.as_mut() {
-                button.any |= binding.behavior.apply(&input, binding.key);
-                for p in paths.iter() {
-                    *button.entry_with_path(**p).or_default() |=
-                        binding.behavior.apply(&input, binding.key);
-                }
-            }
-            if let Some(float) = f32_value.as_mut() {
-                if binding.axis == InputAxis::X {
-                    let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
-
-                    float.any += val * binding.axis_dir.as_multipier() * delta_multiplier;
-                    for p in paths.iter() {
-                        *float.entry_with_path(**p).or_default() +=
-                            val * binding.axis_dir.as_multipier() * delta_multiplier;
-                    }
-                }
-            }
-            if let Some(vec) = vec2_value.as_mut() {
+    query.run(
+        "schminput:keyboard",
+        get_binding_id,
+        |_, v| *v,
+        |bindings| bindings.0.clone(),
+        |binding, _, _, data| {
+            let delta_multiplier = match data.modifications.premul_delta_time {
+                true => time.delta_secs(),
+                false => 1.0,
+            };
+            let bool = data
+                .is_bool
+                .then(|| binding.behavior.apply(&input, binding.key));
+            let f32 = data.is_f32.then(|| {
+                binding.behavior.apply(&input, binding.key) as u8 as f32
+                    * binding.axis_dir.as_multipier()
+                    * delta_multiplier
+            });
+            let vec2 = data.is_vec2.then(|| {
                 let val = binding.behavior.apply(&input, binding.key) as u8 as f32;
                 match binding.axis {
-                    InputAxis::X => {
-                        vec.any.x += val * binding.axis_dir.as_multipier() * delta_multiplier
-                    }
-                    InputAxis::Y => {
-                        vec.any.y += val * binding.axis_dir.as_multipier() * delta_multiplier
-                    }
-                };
-                for p in paths.iter() {
-                    match binding.axis {
-                        InputAxis::X => {
-                            vec.entry_with_path(**p).or_default().x +=
-                                val * binding.axis_dir.as_multipier() * delta_multiplier
-                        }
-                        InputAxis::Y => {
-                            vec.entry_with_path(**p).or_default().y +=
-                                val * binding.axis_dir.as_multipier() * delta_multiplier
-                        }
-                    };
+                    InputAxis::X => Vec2::new(
+                        val * binding.axis_dir.as_multipier() * delta_multiplier,
+                        0.0,
+                    ),
+                    InputAxis::Y => Vec2::new(
+                        0.0,
+                        val * binding.axis_dir.as_multipier() * delta_multiplier,
+                    ),
                 }
-            }
-        }
-    }
+            });
+
+            vec![BindingValue { vec2, bool, f32 }]
+        },
+    );
 }
 
 // TODO: switch binding behavior to use subaction paths?

@@ -36,7 +36,7 @@ fn print_action(
 }
 
 fn setup_actions(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
     let sub_paths = RequestedSubactionPaths::new()
         .mutate(&mut paths, cmds.reborrow())
         .push("/mouse/button")

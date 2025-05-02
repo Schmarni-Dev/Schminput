@@ -8,11 +8,11 @@ pub struct BindingModifiaction(pub Entity);
 
 /// attached to an action
 #[derive(Debug, Clone, Reflect, PartialEq, Eq, Hash, Component, Default)]
-pub struct BindingModifiactions {
+pub struct BindingModifications {
     pub all_paths: Option<BindingModifiaction>,
     pub per_path: Vec<(SubactionPath, BindingModifiaction)>,
 }
-impl BindingModifiactions {
+impl BindingModifications {
     pub fn with_path_modification(mut self, path: SubactionPath, modification: Entity) -> Self {
         self.path_modification(path, modification);
         self
@@ -27,7 +27,7 @@ impl BindingModifiactions {
 }
 
 #[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash, Component)]
-pub struct PremultiplyDeltaTimeSecondsModification;
+pub struct PremultiplyDeltaSecsModification;
 
 #[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq, Hash, Component)]
 pub struct UnboundedModification;

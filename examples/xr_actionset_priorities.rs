@@ -21,6 +21,13 @@ struct MoveActions {
     look: Entity,
     jump: Entity,
 }
+#[allow(dead_code)]
+#[derive(Resource, Clone, Copy)]
+struct InteractActions {
+    set: Entity,
+    select: Entity,
+    toggle_blocking: Entity,
+}
 
 fn main() {
     let mut app = App::new();
@@ -28,12 +35,13 @@ fn main() {
     app.add_plugins(schminput::DefaultSchminputPlugins);
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
-    app.add_systems(Update, run);
+    app.add_systems(Update, (run, toggle_blocking));
 
     app.run();
 }
 fn setup(mut cmds: Commands) {
     let player_set = cmds.spawn(ActionSet::new("player", "Player", 1)).id();
+    let interact_set = cmds.spawn(ActionSet::new("interact", "Interact", 2)).id();
     let pose_set = cmds.spawn(ActionSet::new("pose", "Poses", 0)).id();
     let move_action = cmds
         .spawn((
@@ -55,10 +63,44 @@ fn setup(mut cmds: Commands) {
     let jump = cmds
         .spawn((
             Action::new("jump", "Jump", player_set),
-            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/a/click"]),
+            OxrBindings::new()
+                .interaction_profile(OCULUS_TOUCH_PROFILE)
+                .binding("/user/hand/right/input/a/click")
+                .binding("/user/hand/right/input/b/click")
+                .end(),
             KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
             GamepadBindings::new()
                 .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
+            BoolActionValue::new(),
+        ))
+        .id();
+    let select = cmds
+        .spawn((
+            Action::new("select", "Select", interact_set),
+            OxrBindings::new()
+                .interaction_profile(OCULUS_TOUCH_PROFILE)
+                .binding("/user/hand/right/input/b/click")
+                .end(),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
+            GamepadBindings::new()
+                .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
+            BoolActionValue::new(),
+        ))
+        .id();
+    let toggle_blocking = cmds
+        .spawn((
+            Action::new(
+                "toggle_blocking",
+                "Toggle Action Set Blocking",
+                interact_set,
+            ),
+            OxrBindings::new()
+                .interaction_profile(OCULUS_TOUCH_PROFILE)
+                .binding("/user/hand/left/input/y/click")
+                .end(),
+            KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Tab)),
+            GamepadBindings::new()
+                .bind(GamepadBinding::new(GamepadBindingSource::North).button_just_pressed()),
             BoolActionValue::new(),
         ))
         .id();
@@ -87,6 +129,11 @@ fn setup(mut cmds: Commands) {
         look,
         jump,
     });
+    cmds.insert_resource(InteractActions {
+        set: interact_set,
+        select,
+        toggle_blocking,
+    });
     cmds.insert_resource(CoreActions {
         set: pose_set,
         left_pose,
@@ -94,8 +141,23 @@ fn setup(mut cmds: Commands) {
     });
 }
 
+fn toggle_blocking(
+    action_query: Query<&BoolActionValue>,
+    mut set_query: Query<&mut ActionSet>,
+    mut last: Local<bool>,
+    actions: Res<InteractActions>,
+) {
+    let v = action_query.get(actions.toggle_blocking).unwrap().any;
+    if v && !*last {
+        let mut set = set_query.get_mut(actions.set).unwrap();
+        set.transparent = !set.transparent;
+    }
+    *last = v;
+}
+
 fn run(
     move_actions: Res<MoveActions>,
+    interact_actions: Res<InteractActions>,
     vec2_value: Query<&Vec2ActionValue>,
     f32_value: Query<&F32ActionValue>,
     bool_value: Query<&BoolActionValue>,
@@ -109,6 +171,10 @@ fn run(
     );
     info!("look: {}", f32_value.get(move_actions.look).unwrap().any);
     info!("jump: {}", bool_value.get(move_actions.jump).unwrap().any);
+    info!(
+        "select: {}",
+        bool_value.get(interact_actions.select).unwrap().any
+    );
     for hand in left_hand.into_iter() {
         let pose = hand.to_isometry();
         gizmos.sphere(pose, 0.1, css::ORANGE_RED);

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use schminput::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecsModification},
+    binding_modification::{BindingModifications, PremultiplyDeltaSecsModification},
     prelude::*,
 };
 fn main() -> AppExit {
@@ -26,16 +26,16 @@ struct Actions {
 }
 
 fn setup(mut cmds: Commands, mut paths: ResMut<SubactionPaths>) {
-    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
     let thumbstick_path = paths.get_or_create_path("/gamepad/*/thumbstick", &mut cmds);
-    let modification_entity = cmds.spawn(PremultiplyDeltaTimeSecsModification).id();
+    let modification_entity = cmds.spawn(PremultiplyDeltaSecsModification).id();
     let action_1 = cmds
         .spawn((
             Action::new("action_1", "Test Action 1", set),
             GamepadBindings::new()
                 .bind(GamepadBinding::new(GamepadBindingSource::LeftStickX).x_axis())
                 .bind(GamepadBinding::new(GamepadBindingSource::LeftStickY).y_axis()),
-            BindingModifiactions::new()
+            BindingModifications::new()
                 .with_path_modification(thumbstick_path, modification_entity),
             Vec2ActionValue::new(),
         ))

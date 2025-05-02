@@ -1,4 +1,7 @@
-use std::time::Duration;
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    time::Duration,
+};
 
 use atomicow::CowArc;
 use bevy::{
@@ -7,13 +10,11 @@ use bevy::{
 };
 
 use crate::{
-    binding_modification::{
-        BindingModifiactions, PremultiplyDeltaTimeSecondsModification, UnboundedModification,
-    },
+    impl_helpers::{BindingValue, GenericBindingData, ProviderParam},
     prelude::RequestedSubactionPaths,
+    priorities::PriorityAppExt as _,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
-    Action, ActionSet, BoolActionValue, ButtonInputBeheavior, F32ActionValue, InputAxis,
-    InputAxisDirection, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
 };
 
 pub struct GamepadPlugin;
@@ -38,7 +39,22 @@ impl Plugin for GamepadPlugin {
             PreUpdate,
             handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
         );
+        app.add_binding_id_system(
+            "schminput:gamepad",
+            |entity: In<Entity>, query: Query<&GamepadBindings>| {
+                let Ok(bindings) = query.get(entity.0) else {
+                    return Vec::new();
+                };
+                bindings.bindings.iter().map(get_binding_id).collect()
+            },
+        );
     }
+}
+
+fn get_binding_id(binding: &GamepadBinding) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    binding.source.hash(&mut hasher);
+    hasher.finish()
 }
 
 fn handle_new_subaction_paths(
@@ -244,201 +260,78 @@ fn sync_haptics(
 #[allow(clippy::type_complexity)]
 fn sync_actions(
     gamepads: Query<(Entity, &Gamepad, Option<&GamepadIdentifier>)>,
-    mut query: Query<(
+    mut query: ProviderParam<
         &GamepadBindings,
-        &Action,
-        &RequestedSubactionPaths,
-        &BindingModifiactions,
-        Option<&mut BoolActionValue>,
-        Option<&mut F32ActionValue>,
-        Option<&mut Vec2ActionValue>,
-    )>,
-    set_query: Query<&ActionSet>,
-    path_query: Query<(
-        &GamepadPathSelector,
-        Option<&GamepadPathTarget>,
-        Option<&GamepadPathTargetSide>,
-    )>,
-    modification_query: Query<(
-        Has<PremultiplyDeltaTimeSecondsModification>,
-        Has<UnboundedModification>,
-    )>,
+        (
+            &GamepadPathSelector,
+            Option<&GamepadPathTarget>,
+            Option<&GamepadPathTargetSide>,
+        ),
+    >,
     time: Res<Time>,
 ) {
-    for (
-        gamepad_bindings,
-        action,
-        sub_paths,
-        modifications,
-        mut bool_value,
-        mut float_value,
-        mut vec2_value,
-    ) in &mut query
-    {
-        if !(set_query.get(action.set).is_ok_and(|v| v.enabled)) {
-            continue;
-        };
-
-        let (pre_mul_delta_time_all, unbounded_all) = modifications
-            .all_paths
-            .as_ref()
-            .and_then(|v| modification_query.get(v.0).ok())
-            .unwrap_or_default();
-        for binding in &gamepad_bindings.bindings {
-            let (mut pre_mul_delta_time, mut unbounded) = (pre_mul_delta_time_all, unbounded_all);
-            for (mod_sub_path, modification) in modifications.per_path.iter().copied() {
-                let Ok((_, target, target_side)) = path_query.get(*mod_sub_path) else {
-                    continue;
-                };
-                if let Some(target) = target {
-                    if target.matches(&binding.source, target_side) {
-                        let Ok((pre_mul, unbound)) = modification_query.get(*modification) else {
-                            continue;
-                        };
-                        pre_mul_delta_time |= pre_mul;
-                        unbounded |= unbound;
-                    }
-                }
-            }
-            for (_, gamepad, _) in gamepads.iter() {
-                handle_gamepad_inputs(
-                    gamepad,
-                    binding,
-                    bool_value.as_deref_mut(),
-                    float_value.as_deref_mut(),
-                    vec2_value.as_deref_mut(),
-                    None,
-                    &time,
-                    pre_mul_delta_time,
-                    unbounded,
-                );
-            }
-        }
-        for sub_path in sub_paths.iter() {
-            let Ok((device, target, target_side)) = path_query.get(**sub_path) else {
-                continue;
+    query.run(
+        "schminput:gamepad",
+        get_binding_id,
+        |binding: &GamepadBinding, (_, target, target_side)| {
+            target.is_none_or(|target| target.matches(&binding.source, *target_side))
+        },
+        |bindings| bindings.bindings.clone(),
+        |binding, _, path_data, data| {
+            let device = match path_data {
+                Some((gamepad, _, _)) => (*gamepad).clone(),
+                None => GamepadPathSelector::All,
             };
-            for binding in &gamepad_bindings.bindings {
-                let (mut pre_mul_delta_time, mut unbounded) =
-                    (pre_mul_delta_time_all, unbounded_all);
-                for (mod_sub_path, modification) in modifications.per_path.iter().copied() {
-                    let Ok((_, target, target_side)) = path_query.get(*mod_sub_path) else {
-                        continue;
+
+            let mut out = Vec::new();
+            match device {
+                GamepadPathSelector::All => {
+                    for (_, gamepad, _) in gamepads.iter() {
+                        out.push(handle_gamepad_inputs_new(gamepad, binding, data, &time));
+                    }
+                }
+                GamepadPathSelector::Gamepad(gamepad) => {
+                    let Some((gamepad, _)) = gamepads
+                        .iter()
+                        .filter_map(|(_, e, v)| Some((e, v?)))
+                        .find(|(_, v)| v.as_ref() == gamepad.as_str())
+                    else {
+                        return vec![];
                     };
-                    if let Some(target) = target {
-                        if target.matches(&binding.source, target_side) {
-                            let Ok((pre_mul, unbound)) = modification_query.get(*modification)
-                            else {
-                                continue;
-                            };
-                            pre_mul_delta_time |= pre_mul;
-                            unbounded |= unbound;
-                        }
-                    }
+                    out.push(handle_gamepad_inputs_new(gamepad, binding, data, &time));
                 }
-                if let Some(target) = target {
-                    if !target.matches(&binding.source, target_side) {
-                        continue;
-                    }
-                }
-                match device {
-                    GamepadPathSelector::All => {
-                        for (_, gamepad, _) in gamepads.iter() {
-                            handle_gamepad_inputs(
-                                gamepad,
-                                binding,
-                                bool_value.as_deref_mut(),
-                                float_value.as_deref_mut(),
-                                vec2_value.as_deref_mut(),
-                                Some(*sub_path),
-                                &time,
-                                pre_mul_delta_time,
-                                unbounded,
-                            );
-                        }
-                    }
-                    GamepadPathSelector::Gamepad(gamepad) => {
-                        let Some((gamepad, _)) = gamepads
-                            .iter()
-                            .filter_map(|(_, e, v)| Some((e, v?)))
-                            .find(|(_, v)| v.as_ref() == gamepad.as_str())
-                        else {
-                            continue;
-                        };
-                        handle_gamepad_inputs(
-                            gamepad,
-                            binding,
-                            bool_value.as_deref_mut(),
-                            float_value.as_deref_mut(),
-                            vec2_value.as_deref_mut(),
-                            Some(*sub_path),
-                            &time,
-                            pre_mul_delta_time,
-                            unbounded,
-                        );
-                    }
-                };
-            }
-        }
-    }
+            };
+            out
+        },
+    );
 }
 
-#[allow(clippy::too_many_arguments)]
-fn handle_gamepad_inputs(
+fn handle_gamepad_inputs_new(
     gamepad: &Gamepad,
     binding: &GamepadBinding,
-    mut bool_value: Option<&mut BoolActionValue>,
-    mut float_value: Option<&mut F32ActionValue>,
-    mut vec2_value: Option<&mut Vec2ActionValue>,
-    path: Option<SubactionPath>,
+    data: &GenericBindingData,
     time: &Time,
-    pre_mul_delta_time: bool,
-    unbounded: bool,
-) {
-    let delta_multiplier = match pre_mul_delta_time {
+) -> BindingValue {
+    let delta_multiplier = match data.modifications.premul_delta_time {
         true => time.delta_secs(),
         false => 1.0,
     };
-    let Some(v) = (match unbounded {
+    let Some(v) = (match data.modifications.unbounded {
         true => gamepad.get_unclamped(binding.source),
         false => gamepad.get(binding.source),
     }) else {
         warn!("gamepad.get returned None, idk what that means");
-        return;
+        return BindingValue::default();
     };
-    if let Some(bool_value) = bool_value.as_mut() {
-        match path {
-            Some(path) => *bool_value.0.entry_with_path(path).or_default() |= v > 0.1,
-            None => *bool_value.0 |= v > 0.1,
-        }
-    }
-    if let Some(float_value) = float_value.as_mut() {
-        match path {
-            Some(path) => {
-                *float_value.0.entry_with_path(path).or_default() +=
-                    v * binding.axis_dir.as_multipier() * delta_multiplier
-            }
-            None => *float_value.0 += v * binding.axis_dir.as_multipier() * delta_multiplier,
-        }
-    }
-    if let Some(vec2_value) = vec2_value.as_mut() {
-        match binding.axis {
-            InputAxis::X => match path {
-                Some(path) => {
-                    vec2_value.0.entry_with_path(path).or_default().x +=
-                        v * binding.axis_dir.as_multipier() * delta_multiplier
-                }
-                None => vec2_value.0.x += v * binding.axis_dir.as_multipier() * delta_multiplier,
-            },
-            InputAxis::Y => match path {
-                Some(path) => {
-                    vec2_value.0.entry_with_path(path).or_default().y +=
-                        v * binding.axis_dir.as_multipier() * delta_multiplier
-                }
-                None => vec2_value.0.y += v * binding.axis_dir.as_multipier() * delta_multiplier,
-            },
-        }
-    }
+    let bool = data.is_bool.then_some(v > 0.1);
+    let f32 = data
+        .is_f32
+        .then(|| v * binding.axis_dir.as_multipier() * delta_multiplier);
+    let vec2 = data.is_vec2.then(|| match binding.axis {
+        InputAxis::X => Vec2::new(v * binding.axis_dir.as_multipier() * delta_multiplier, 0.0),
+        InputAxis::Y => Vec2::new(0.0, v * binding.axis_dir.as_multipier() * delta_multiplier),
+    });
+    BindingValue { vec2, bool, f32 }
 }
 
 #[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash)]

@@ -1,10 +1,12 @@
 pub mod binding_modification;
 pub mod gamepad;
+pub mod impl_helpers;
 pub mod keyboard;
 pub mod mouse;
 #[cfg(feature = "xr")]
 pub mod openxr;
 pub mod prelude;
+pub mod priorities;
 pub mod subaction_paths;
 #[cfg(feature = "xr")]
 pub mod xr;
@@ -16,13 +18,15 @@ use bevy::{
     ecs::{component::ComponentId, entity::EntityHashSet, world::DeferredWorld},
     prelude::*,
 };
-use binding_modification::BindingModifiactions;
+use binding_modification::BindingModifications;
+use priorities::PrioritiesPlugin;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
 pub enum SchminputSet {
     HandleNewSubactionPaths,
     ClearValues,
+    CalculateBindingCollisions,
     SyncInputActions,
     SyncOutputActions,
 }
@@ -38,6 +42,7 @@ impl Plugin for SchminputPlugin {
             (
                 SchminputSet::HandleNewSubactionPaths,
                 SchminputSet::ClearValues,
+                SchminputSet::CalculateBindingCollisions,
                 SchminputSet::SyncInputActions,
             )
                 .chain(),
@@ -74,6 +79,7 @@ impl PluginGroup for DefaultSchminputPlugins {
         let g = PluginGroupBuilder::start::<DefaultSchminputPlugins>()
             .add(SchminputPlugin)
             .add(SubactionPathPlugin)
+            .add(PrioritiesPlugin)
             .add(keyboard::KeyboardPlugin)
             .add(mouse::MousePlugin)
             .add(gamepad::GamepadPlugin);
@@ -88,7 +94,7 @@ impl PluginGroup for DefaultSchminputPlugins {
 #[derive(Debug, Clone, Reflect, Component)]
 #[component(on_add = on_action_add)]
 #[component(on_remove = on_action_remove)]
-#[require(RequestedSubactionPaths, BindingModifiactions)]
+#[require(RequestedSubactionPaths, BindingModifications)]
 pub struct Action {
     pub set: Entity,
     pub localized_name: Cow<'static, str>,
@@ -142,18 +148,31 @@ pub struct ActionSet {
     pub name: Cow<'static, str>,
     pub localized_name: Cow<'static, str>,
     pub enabled: bool,
+    pub priority: u32,
+    /// when true the action set will not block input for other sets
+    /// and other sets won't block input for this action set
+    pub transparent: bool,
 }
 
 impl ActionSet {
     pub fn new(
         name: impl Into<Cow<'static, str>>,
         localized_name: impl Into<Cow<'static, str>>,
+        priority: u32,
     ) -> ActionSet {
         ActionSet {
             name: name.into(),
             localized_name: localized_name.into(),
             enabled: true,
+            priority,
+            transparent: false,
         }
+    }
+    /// when called the action set will not block input for other sets
+    /// and other sets won't block input for this action set
+    pub fn transparent(mut self) -> Self {
+        self.transparent = true;
+        self
     }
 }
 
@@ -209,6 +228,12 @@ impl InputAxis {
         match self {
             InputAxis::X => vec.x,
             InputAxis::Y => vec.y,
+        }
+    }
+    pub fn new_vec(&self, value: f32) -> Vec2 {
+        match self {
+            InputAxis::X => Vec2::new(value, 0.0),
+            InputAxis::Y => Vec2::new(0.0, value),
         }
     }
     pub fn vec_axis_mut<'a>(&self, vec: &'a mut Vec2) -> &'a mut f32 {

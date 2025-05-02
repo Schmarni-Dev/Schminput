@@ -14,9 +14,10 @@ use bevy_mod_openxr::{
 #[cfg(not(target_family = "wasm"))]
 use bevy_mod_xr::session::{XrPreSessionEnd, XrSessionCreated};
 
+use crate::ActionsInSet;
 #[cfg(not(target_family = "wasm"))]
 use crate::{
-    binding_modification::{BindingModifiactions, PremultiplyDeltaTimeSecondsModification},
+    binding_modification::{BindingModifications, PremultiplyDeltaSecsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
     xr::SpaceActionValue,
     Action, ActionSet, BoolActionValue, F32ActionValue, SchminputSet, Vec2ActionValue,
@@ -36,6 +37,7 @@ impl Plugin for OxrInputPlugin {
             PreUpdate,
             (
                 sync_action_sets.before(OxrActionSetSyncSet),
+                sync_non_blocking_action_sets.before(OxrActionSetSyncSet),
                 sync_input_actions.after(OxrActionSetSyncSet),
                 attach_spaces_to_target_entities,
             )
@@ -118,6 +120,30 @@ fn insert_xr_subaction_paths(
     }
 }
 
+fn sync_non_blocking_action_sets(world: &mut World) {
+    let query = world
+        .query::<(&OxrActionSet, &ActionSet, &ActionsInSet)>()
+        .iter(world)
+        .filter(|(_, v, _)| v.enabled && v.transparent)
+        .map(|(set, _, actions)| (set.0.clone(), actions.0.iter().copied().collect::<Vec<_>>()))
+        .collect::<Vec<_>>();
+
+    for (set, actions) in query.into_iter() {
+        let Some(session) = world.get_resource::<OxrSession>() else {
+            continue;
+        };
+        if let Err(err) = session.sync_actions(&[openxr::ActiveActionSet::new(&set)]) {
+            error!("error while syncing non blocking action set: {err}");
+            continue;
+        }
+        for action in actions.into_iter() {
+            if let Err(err) = world.run_system_cached_with(sync_input_action, action) {
+                error!("{err}");
+            }
+        }
+    }
+}
+
 #[cfg(not(target_family = "wasm"))]
 fn sync_action_sets(
     query: Query<(&OxrActionSet, &ActionSet)>,
@@ -125,7 +151,7 @@ fn sync_action_sets(
 ) {
     let sets = query
         .iter()
-        .filter(|(_, v)| v.enabled)
+        .filter(|(_, v)| v.enabled && !v.transparent)
         .map(|(set, _)| OxrSyncActionSet(set.0.clone()));
     sync_set.send_batch(sets);
 }
@@ -186,7 +212,7 @@ fn create_input_actions(
                 let set = match instance.create_action_set(
                     &action_set.name,
                     &action_set.localized_name,
-                    0,
+                    action_set.priority,
                 ) {
                     Ok(v) => v,
                     Err(err) => {
@@ -241,10 +267,28 @@ fn create_input_actions(
         cmds.entity(e).insert(OxrActionSet(set));
     }
 }
+#[cfg(not(target_family = "wasm"))]
+fn sync_input_actions(world: &mut World) {
+    use crate::ActionsInSet;
+
+    let entities = world
+        .query::<(&ActionSet, &ActionsInSet)>()
+        .iter(world)
+        .filter(|&(set, _)| set.enabled && !set.transparent)
+        .flat_map(|(_, actions)| actions.0.iter())
+        .copied()
+        .collect::<Vec<_>>();
+    entities.into_iter().for_each(|e| {
+        if let Err(err) = world.run_system_cached_with(sync_input_action, e) {
+            error!("{err}");
+        }
+    });
+}
 
 #[cfg(not(target_family = "wasm"))]
 #[allow(clippy::type_complexity)]
-fn sync_input_actions(
+fn sync_input_action(
+    action: In<Entity>,
     session: Res<OxrSession>,
     mut query: Query<(
         &mut OxrAction,
@@ -253,14 +297,14 @@ fn sync_input_actions(
         Option<&mut Vec2ActionValue>,
         Option<&mut SpaceActionValue>,
         &RequestedSubactionPaths,
-        &BindingModifiactions,
+        &BindingModifications,
     )>,
     path_query: Query<&OxrSubactionPath>,
     simple_path_query: Query<Has<IsOxrSubactionPath>>,
-    modification_query: Query<Has<PremultiplyDeltaTimeSecondsModification>>,
+    modification_query: Query<Has<PremultiplyDeltaSecsModification>>,
     time: Res<Time>,
 ) {
-    for (
+    let Ok((
         mut action,
         mut bool_val,
         mut f32_val,
@@ -268,118 +312,136 @@ fn sync_input_actions(
         mut space_val,
         requested_subaction_paths,
         modifications,
-    ) in &mut query
+    )) = query.get_mut(action.0)
+    else {
+        return;
+    };
+
+    let paths = requested_subaction_paths
+        .iter()
+        .filter_map(|p| Some((*p, path_query.get(p.0).ok()?)))
+        .map(|(sub_path, path)| (sub_path, path.0))
+        .collect::<Vec<_>>();
+    let mut pre_mul_delta_time = modifications
+        .all_paths
+        .as_ref()
+        .and_then(|v| modification_query.get(v.0).ok())
+        .unwrap_or_default();
+    for (_, modification) in modifications
+        .per_path
+        .iter()
+        .filter(|(p, _)| simple_path_query.get(p.0).unwrap_or(false))
     {
-        let paths = requested_subaction_paths
-            .iter()
-            .filter_map(|p| Some((*p, path_query.get(p.0).ok()?)))
-            .map(|(sub_path, path)| (sub_path, path.0))
-            .collect::<Vec<_>>();
-        let mut pre_mul_delta_time = modifications
-            .all_paths
-            .as_ref()
-            .and_then(|v| modification_query.get(v.0).ok())
-            .unwrap_or_default();
-        for (_, modification) in modifications
-            .per_path
-            .iter()
-            .filter(|(p, _)| simple_path_query.get(p.0).unwrap_or(false))
-        {
-            pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
-        }
-        let delta_multiplier = match pre_mul_delta_time {
-            true => time.delta_secs(),
-            false => 1.0,
-        };
-        match action.as_mut() {
-            OxrAction::Bool(action) => {
-                match action.state(&session, openxr::Path::NULL) {
+        pre_mul_delta_time |= modification_query.get(modification.0).unwrap_or(false);
+    }
+    let delta_multiplier = match pre_mul_delta_time {
+        true => time.delta_secs(),
+        false => 1.0,
+    };
+    match action.as_mut() {
+        OxrAction::Bool(action) => {
+            match action.state(&session, openxr::Path::NULL) {
+                Ok(v) => {
+                    if let Some(val) = bool_val.as_mut() {
+                        val.any |= v.current_state;
+                    } else {
+                        warn!("Bool action but no bool Value!");
+                    }
+                }
+                Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+            };
+            for (sub_action_path, path) in paths.into_iter() {
+                match action.state(&session, path) {
                     Ok(v) => {
                         if let Some(val) = bool_val.as_mut() {
-                            val.any |= v.current_state;
+                            *val.entry_with_path(sub_action_path).or_default() |= v.current_state;
                         } else {
                             warn!("Bool action but no bool Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
-                for (sub_action_path, path) in paths.into_iter() {
-                    match action.state(&session, path) {
-                        Ok(v) => {
-                            if let Some(val) = bool_val.as_mut() {
-                                *val.entry_with_path(sub_action_path).or_default() |=
-                                    v.current_state;
-                            } else {
-                                warn!("Bool action but no bool Value!");
-                            }
-                        }
-                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
-                    };
-                }
             }
-            OxrAction::F32(action) => {
-                match action.state(&session, openxr::Path::NULL) {
+        }
+        OxrAction::F32(action) => {
+            match action.state(&session, openxr::Path::NULL) {
+                Ok(v) => {
+                    if let Some(val) = f32_val.as_mut() {
+                        val.any += v.current_state * delta_multiplier;
+                    } else {
+                        warn!("F32 action but no f32 Value!");
+                    }
+                }
+                Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+            };
+            for (sub_action_path, path) in paths.into_iter() {
+                match action.state(&session, path) {
                     Ok(v) => {
                         if let Some(val) = f32_val.as_mut() {
-                            val.any += v.current_state * delta_multiplier;
+                            *val.entry_with_path(sub_action_path).or_default() +=
+                                v.current_state * delta_multiplier;
                         } else {
                             warn!("F32 action but no f32 Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
-                for (sub_action_path, path) in paths.into_iter() {
-                    match action.state(&session, path) {
-                        Ok(v) => {
-                            if let Some(val) = f32_val.as_mut() {
-                                *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state * delta_multiplier;
-                            } else {
-                                warn!("F32 action but no f32 Value!");
-                            }
-                        }
-                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
-                    };
-                }
             }
-            OxrAction::Vec2(action) => {
-                match action.state(&session, openxr::Path::NULL) {
+        }
+        OxrAction::Vec2(action) => {
+            match action.state(&session, openxr::Path::NULL) {
+                Ok(v) => {
+                    if let Some(val) = vec2_val.as_mut() {
+                        // This might be broken!
+                        val.any += v.current_state.to_vec2() * delta_multiplier;
+                    } else {
+                        warn!("Vec2 action but no Vec2 Value!");
+                    }
+                }
+                Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+            };
+            for (sub_action_path, path) in paths.into_iter() {
+                match action.state(&session, path) {
                     Ok(v) => {
                         if let Some(val) = vec2_val.as_mut() {
                             // This might be broken!
-                            val.any += v.current_state.to_vec2() * delta_multiplier;
+                            *val.entry_with_path(sub_action_path).or_default() +=
+                                v.current_state.to_vec2() * delta_multiplier;
                         } else {
                             warn!("Vec2 action but no Vec2 Value!");
                         }
                     }
                     Err(e) => warn!("unable to get data from action: {}", e.to_string()),
                 };
-                for (sub_action_path, path) in paths.into_iter() {
-                    match action.state(&session, path) {
-                        Ok(v) => {
-                            if let Some(val) = vec2_val.as_mut() {
-                                // This might be broken!
-                                *val.entry_with_path(sub_action_path).or_default() +=
-                                    v.current_state.to_vec2() * delta_multiplier;
-                            } else {
-                                warn!("Vec2 action but no Vec2 Value!");
-                            }
+            }
+        }
+        // TODO: Add support for XrPose offets (per subaction path?)
+        OxrAction::Space(action) => {
+            if let Some(val) = space_val.as_mut() {
+                if val.is_none() {
+                    match session.create_action_space(
+                        action,
+                        openxr::Path::NULL,
+                        Isometry3d::IDENTITY,
+                    ) {
+                        Ok(s) => {
+                            val.replace(s);
                         }
-                        Err(e) => warn!("unable to get data from action: {}", e.to_string()),
+                        Err(e) => {
+                            warn!("unable to create space from action: {}", e);
+                            return;
+                        }
                     };
                 }
-            }
-            // TODO: Add support for XrPose offets (per subaction path?)
-            OxrAction::Space(action) => {
-                if let Some(val) = space_val.as_mut() {
-                    if val.is_none() {
-                        match session.create_action_space(
-                            action,
-                            openxr::Path::NULL,
-                            Isometry3d::IDENTITY,
-                        ) {
+                for (sub_path, path) in paths.into_iter() {
+                    if val
+                        .get_with_path(&sub_path)
+                        .and_then(|v| v.as_ref())
+                        .is_none()
+                    {
+                        match session.create_action_space(action, path, Isometry3d::IDENTITY) {
                             Ok(s) => {
-                                val.replace(s);
+                                val.set_value_for_path(sub_path, Some(s));
                             }
                             Err(e) => {
                                 warn!("unable to create space from action: {}", e);
@@ -387,29 +449,12 @@ fn sync_input_actions(
                             }
                         };
                     }
-                    for (sub_path, path) in paths.into_iter() {
-                        if val
-                            .get_with_path(&sub_path)
-                            .and_then(|v| v.as_ref())
-                            .is_none()
-                        {
-                            match session.create_action_space(action, path, Isometry3d::IDENTITY) {
-                                Ok(s) => {
-                                    val.set_value_for_path(sub_path, Some(s));
-                                }
-                                Err(e) => {
-                                    warn!("unable to create space from action: {}", e);
-                                    continue;
-                                }
-                            };
-                        }
-                    }
-                } else {
-                    warn!("Space action but no Space Value!");
                 }
+            } else {
+                warn!("Space action but no Space Value!");
             }
-            OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
         }
+        OxrAction::Haptic(_) => warn!("Haptic Unimplemented"),
     }
 }
 
