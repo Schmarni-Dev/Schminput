@@ -483,7 +483,7 @@ impl OxrBindings {
 
 impl OxrBindings {
     /// alternative abstraction over the builder pattern
-    pub fn bindngs(
+    pub fn bindings(
         self,
         profile: impl Into<Cow<'static, str>>,
         bindings: impl IntoIterator<Item = impl Into<Cow<'static, str>>>,

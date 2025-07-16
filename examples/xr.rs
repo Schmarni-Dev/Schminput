@@ -38,14 +38,14 @@ fn setup(mut cmds: Commands) {
     let move_action = cmds
         .spawn((
             Action::new("move", "Move", player_set),
-            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/thumbstick"]),
+            OxrBindings::new().bindings(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/thumbstick"]),
             Vec2ActionValue::new(),
         ))
         .id();
     let look = cmds
         .spawn((
             Action::new("look", "Look", player_set),
-            OxrBindings::new().bindngs(
+            OxrBindings::new().bindings(
                 OCULUS_TOUCH_PROFILE,
                 ["/user/hand/right/input/thumbstick/x"],
             ),
@@ -55,7 +55,7 @@ fn setup(mut cmds: Commands) {
     let jump = cmds
         .spawn((
             Action::new("jump", "Jump", player_set),
-            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/a/click"]),
+            OxrBindings::new().bindings(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/a/click"]),
             KeyboardBindings::new().bind(KeyboardBinding::new(KeyCode::Space)),
             GamepadBindings::new()
                 .bind(GamepadBinding::new(GamepadBindingSource::South).button_just_pressed()),
@@ -68,7 +68,7 @@ fn setup(mut cmds: Commands) {
     let left_pose = cmds
         .spawn((
             Action::new("hand_left_pose", "Left Hand Pose", pose_set),
-            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/grip/pose"]),
+            OxrBindings::new().bindings(OCULUS_TOUCH_PROFILE, ["/user/hand/left/input/grip/pose"]),
             AttachSpaceToEntity(left_hand),
             SpaceActionValue::new(),
         ))
@@ -76,7 +76,7 @@ fn setup(mut cmds: Commands) {
     let right_pose = cmds
         .spawn((
             Action::new("hand_right_pose", "Right Hand Pose", pose_set),
-            OxrBindings::new().bindngs(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/aim/pose"]),
+            OxrBindings::new().bindings(OCULUS_TOUCH_PROFILE, ["/user/hand/right/input/aim/pose"]),
             AttachSpaceToEntity(right_hand),
             SpaceActionValue::new(),
         ))
