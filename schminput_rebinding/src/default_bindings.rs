@@ -3,7 +3,7 @@ use schminput::prelude::*;
 
 #[derive(SystemSet, Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum DefaultBindingsSet {
-    CopyDefaultBindngs,
+    CopyDefaultBindings,
     LoadCustomBindings,
 }
 
@@ -19,7 +19,7 @@ impl Plugin for RebindingDefaultBindingsPlugin {
         app.add_event::<ResetToDefautlBindings>();
         app.add_systems(
             PostStartup,
-            copy_default_bindings.in_set(DefaultBindingsSet::CopyDefaultBindngs),
+            copy_default_bindings.in_set(DefaultBindingsSet::CopyDefaultBindings),
         );
         app.add_systems(PostUpdate, reset_bindings);
     }
