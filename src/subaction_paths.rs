@@ -8,7 +8,7 @@ pub struct SubactionPathPlugin;
 impl Plugin for SubactionPathPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SubactionPaths>();
-        app.add_event::<SubactionPathCreated>();
+        app.add_message::<SubactionPathCreated>();
         app.add_systems(
             PreUpdate,
             emit_new_path_events.before(SchminputSet::HandleNewSubactionPaths),
@@ -18,13 +18,13 @@ impl Plugin for SubactionPathPlugin {
 
 fn emit_new_path_events(
     mut paths: ResMut<SubactionPaths>,
-    mut e: EventWriter<SubactionPathCreated>,
+    mut e: MessageWriter<SubactionPathCreated>,
 ) {
     e.write_batch(paths.new_paths.iter().copied().map(SubactionPathCreated));
     paths.new_paths.clear();
 }
 
-#[derive(Clone, Copy, Debug, Event)]
+#[derive(Clone, Copy, Debug, Message)]
 pub struct SubactionPathCreated(pub SubactionPath);
 
 #[derive(Resource, Debug, Default)]

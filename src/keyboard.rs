@@ -39,7 +39,7 @@ fn get_binding_id(binding: &KeyboardBinding) -> u64 {
 
 pub fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut reader: EventReader<SubactionPathCreated>,
+    mut reader: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (e, str) in reader

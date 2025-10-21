@@ -7,7 +7,7 @@ pub use crate::mouse::{MouseBindings, MouseButtonBinding, MouseMotionBinding, Mo
 // these all work with only "xr" by chance, nice
 #[cfg(feature = "xr")]
 pub use crate::openxr::{
-    OxrBindings, META_TOUCH_PLUS_PROFILE, META_TOUCH_PRO_PROFILE, OCULUS_TOUCH_PROFILE,
+    OxrBindings, META_TOUCH_PLUS_PROFILE, META_TOUCH_PRO_PROFILE, OCULUS_TOUCH_PROFILE, HP_MIXED_REALITY_PROFILE,
 };
 pub use crate::subaction_paths::{RequestedSubactionPaths, SubactionPaths};
 #[cfg(feature = "xr")]

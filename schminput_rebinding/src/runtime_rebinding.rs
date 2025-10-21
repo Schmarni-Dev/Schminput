@@ -42,7 +42,7 @@ enum PendingKeyboardRebinding {
     },
 }
 
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub enum RequestKeyboardRebinding {
     RebindKey {
         binding_index: usize,
@@ -68,7 +68,7 @@ enum PendingGamepadRebinding {
     },
 }
 
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub enum RequestGamepadRebinding {
     Rebind {
         binding_index: usize,
@@ -93,7 +93,7 @@ enum PendingMouseButtonRebinding {
         action: Entity,
     },
 }
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub enum RequestMouseRebinding {
     RebindButton {
         binding_index: usize,
@@ -126,9 +126,9 @@ pub struct RuntimeRebindingPlugin;
 impl Plugin for RuntimeRebindingPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(WaitingForInput(0));
-        app.add_event::<RequestKeyboardRebinding>();
-        app.add_event::<RequestMouseRebinding>();
-        app.add_event::<RequestGamepadRebinding>();
+        app.add_message::<RequestKeyboardRebinding>();
+        app.add_message::<RequestMouseRebinding>();
+        app.add_message::<RequestGamepadRebinding>();
         #[cfg(feature = "xr")]
         {
             app.add_event::<RequestOpenXrRebinding>();
@@ -183,7 +183,7 @@ fn handle_openxr_request(
 }
 
 fn handle_gamepad_request(
-    mut event: EventReader<RequestGamepadRebinding>,
+    mut event: MessageReader<RequestGamepadRebinding>,
     mut cmds: Commands,
     pending: Option<Res<PendingGamepadRebinding>>,
     mut action_query: Query<&mut GamepadBindings>,
@@ -223,8 +223,8 @@ fn handle_gamepad_request(
 fn handle_gamepad_rebinding(
     rebinding: Res<PendingGamepadRebinding>,
     mut action_query: Query<Option<&mut GamepadBindings>>,
-    mut button_input: EventReader<GamepadButtonChangedEvent>,
-    mut axis_input: EventReader<GamepadAxisChangedEvent>,
+    mut button_input: MessageReader<GamepadButtonChangedEvent>,
+    mut axis_input: MessageReader<GamepadAxisChangedEvent>,
     mut cmds: Commands,
     mut waiting: ResMut<WaitingForInput>,
 ) {
@@ -313,7 +313,7 @@ fn handle_gamepad_rebinding(
 }
 
 fn handle_mouse_request(
-    mut event: EventReader<RequestMouseRebinding>,
+    mut event: MessageReader<RequestMouseRebinding>,
     mut cmds: Commands,
     pending: Option<Res<PendingMouseButtonRebinding>>,
     mut action_query: Query<&mut MouseBindings>,
@@ -365,7 +365,7 @@ fn handle_mouse_request(
 fn handle_mouse_rebinding(
     rebinding: Res<PendingMouseButtonRebinding>,
     mut action_query: Query<Option<&mut MouseBindings>>,
-    mut input: EventReader<MouseButtonInput>,
+    mut input: MessageReader<MouseButtonInput>,
     mut cmds: Commands,
     mut waiting: ResMut<WaitingForInput>,
 ) {
@@ -412,7 +412,7 @@ fn handle_mouse_rebinding(
 }
 
 fn handle_keyboard_request(
-    mut event: EventReader<RequestKeyboardRebinding>,
+    mut event: MessageReader<RequestKeyboardRebinding>,
     mut cmds: Commands,
     pending: Option<Res<PendingKeyboardRebinding>>,
     mut action_query: Query<&mut KeyboardBindings>,
@@ -452,7 +452,7 @@ fn handle_keyboard_request(
 fn handle_keyboard_rebinding(
     rebinding: Res<PendingKeyboardRebinding>,
     mut action_query: Query<Option<&mut KeyboardBindings>>,
-    mut input: EventReader<KeyboardInput>,
+    mut input: MessageReader<KeyboardInput>,
     mut cmds: Commands,
     mut waiting: ResMut<WaitingForInput>,
 ) {

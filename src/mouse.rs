@@ -50,7 +50,7 @@ fn get_binding_id(binding: &AnyMouseBinding) -> u64 {
 
 fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut event: EventReader<SubactionPathCreated>,
+    mut event: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (entity, path) in event
@@ -88,7 +88,7 @@ pub fn sync_actions(
     mut query: ProviderParam<&MouseBindings, &MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
-    mut delta_motion: EventReader<MouseMotion>,
+    mut delta_motion: MessageReader<MouseMotion>,
 ) {
     query.run(
         "schminput:mouse",

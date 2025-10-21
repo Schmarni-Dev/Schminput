@@ -59,7 +59,7 @@ fn get_binding_id(binding: &GamepadBinding) -> u64 {
 
 fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut reader: EventReader<SubactionPathCreated>,
+    mut reader: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (e, str) in reader
@@ -164,7 +164,7 @@ fn clear_haptic(mut query: Query<&mut GamepadHapticOutput>) {
 }
 
 fn sync_haptics(
-    mut gamepad_haptic_event: EventWriter<GamepadRumbleRequest>,
+    mut gamepad_haptic_event: MessageWriter<GamepadRumbleRequest>,
     haptic_query: Query<(
         &GamepadHapticOutputBindings,
         &GamepadHapticOutput,
