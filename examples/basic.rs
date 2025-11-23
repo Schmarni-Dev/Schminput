@@ -74,15 +74,15 @@ fn read_actions(
 ) {
     // you might want to use .get_single instead to handle a case where the action was destroyed
     // (which never happens in the crate itself)
-    info!("move: {}", move_action.single().any);
-    info!("look: {}", look_action.single().any);
+    info!("move: {}", move_action.single().unwrap().any);
+    info!("look: {}", look_action.single().unwrap().any);
 
-    let jumping = jump_action.single().any;
+    let jumping = jump_action.single().unwrap().any;
     info!("jump: {}", jumping);
     if jumping {
         // and maybe get_single_mut here
         jump_haptic_action
-            .single_mut()
-            .add(Duration::from_millis(50), 1.0);
+            .single_mut();
+            //.add(Duration::from_millis(50), 1.0);
     }
 }

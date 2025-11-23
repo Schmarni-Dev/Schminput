@@ -23,8 +23,17 @@ use crate::{
 };
 
 pub const OCULUS_TOUCH_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
+pub const OCULUS_GO_PROFILE: &str = "/interaction_profiles/oculus/go_controller";
 pub const META_TOUCH_PRO_PROFILE: &str = "/interaction_profiles/facebook/touch_controller_pro";
 pub const META_TOUCH_PLUS_PROFILE: &str = "/interaction_profiles/meta/touch_controller_plus";
+pub const KHR_SIMPLE_CONTROLLER_PROFILE: &str = "/interaction_profiles/khr/simple_controller";
+pub const GOOGLE_DAYDREAM_PROFILE: &str = "/interaction_profiles/google/daydream_controller";
+pub const HP_MIXED_REALITY_PROFILE: &str ="/interaction_profiles/hp/mixed_reality_controller";
+pub const HTC_VIVE_PROFILE: &str = "/interaction_profiles/htc/vive_controller";
+pub const HTC_VIVE_PRO_PROFILE: &str = "/interaction_profiles/htc/vive_pro";
+pub const MICROSOFT_MIXED_REALITY_PROFILE: &str = "/interaction_profiles/microsoft/motion_controller";
+pub const MICROSOFT_XBOX_PROFILE: &str = "/interaction_profiles/microsoft/xbox_controller";
+pub const VALVE_INDEX_PROFILE: &str = "/interaction_profiles/valve/index_controller";
 
 impl Plugin for OxrInputPlugin {
     #[cfg(not(target_family = "wasm"))]
@@ -147,7 +156,7 @@ fn sync_non_blocking_action_sets(world: &mut World) {
 #[cfg(not(target_family = "wasm"))]
 fn sync_action_sets(
     query: Query<(&OxrActionSet, &ActionSet)>,
-    mut sync_set: EventWriter<OxrSyncActionSet>,
+    mut sync_set: MessageWriter<OxrSyncActionSet>,
 ) {
     let sets = query
         .iter()
@@ -157,7 +166,7 @@ fn sync_action_sets(
 }
 
 #[cfg(not(target_family = "wasm"))]
-fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
+fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: MessageWriter<OxrAttachActionSet>) {
     for set in &query {
         suggest.write(OxrAttachActionSet(set.0.clone()));
     }
@@ -166,7 +175,7 @@ fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrA
 #[cfg(not(target_family = "wasm"))]
 fn suggest_bindings(
     query: Query<(&OxrBindings, &OxrAction, Entity), Without<BindingsSuggested>>,
-    mut suggest: EventWriter<OxrSuggestActionBinding>,
+    mut suggest: MessageWriter<OxrSuggestActionBinding>,
     mut cmds: Commands,
 ) {
     for (bindings, action, entity) in &query {
