@@ -35,34 +35,34 @@ impl ConfigFilePath {
     }
 }
 
-#[derive(Event, PartialEq, Eq, Clone, Copy, Hash, Default)]
+#[derive(Message, PartialEq, Eq, Clone, Copy, Hash, Default)]
 pub struct LoadSchminputConfig;
-#[derive(Event, PartialEq, Eq, Clone, Copy, Hash, Default)]
+#[derive(Message, PartialEq, Eq, Clone, Copy, Hash, Default)]
 pub struct SaveSchminputConfig;
-#[derive(Event, PartialEq, Eq, Clone, Copy, Hash, Default)]
+#[derive(Message, PartialEq, Eq, Clone, Copy, Hash, Default)]
 pub struct FinnishedSavingSchminputConfig;
 
 impl Plugin for SchminputConfigPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<LoadSchminputConfig>();
-        app.add_event::<SaveSchminputConfig>();
-        app.add_event::<FinnishedSavingSchminputConfig>();
+        app.add_message::<LoadSchminputConfig>();
+        app.add_message::<SaveSchminputConfig>();
+        app.add_message::<FinnishedSavingSchminputConfig>();
         app.add_systems(
             PostUpdate,
             load_config
-                .run_if(on_event::<LoadSchminputConfig>)
+                .run_if(on_message::<LoadSchminputConfig>)
                 .before(PersistentBindingsSet::Deserialize),
         );
         app.add_systems(
             PostUpdate,
             request_save_config
-                .run_if(on_event::<SaveSchminputConfig>)
+                .run_if(on_message::<SaveSchminputConfig>)
                 .before(PersistentBindingsSet::Serialize),
         );
         app.add_systems(
             PostUpdate,
             save_config
-                .run_if(on_event::<FinnishedSchminputConfigSerialization>)
+                .run_if(on_message::<FinnishedSchminputConfigSerialization>)
                 .after(PersistentBindingsSet::Serialize),
         );
     }
@@ -70,7 +70,7 @@ impl Plugin for SchminputConfigPlugin {
 
 fn request_save_config(
     config_path: Res<ConfigFilePath>,
-    mut request_serialize: EventWriter<SerializeSchminputConfig>,
+    mut request_serialize: MessageWriter<SerializeSchminputConfig>,
 ) {
     let Some(path) = config_path.path_buf() else {
         error!("unable to get config path");
@@ -94,18 +94,18 @@ fn request_save_config(
 }
 fn save_config(
     config_path: Res<ConfigFilePath>,
-    mut serialized: EventReader<FinnishedSchminputConfigSerialization>,
-    mut finnish_signal: EventWriter<FinnishedSavingSchminputConfig>,
+    mut serialized: MessageReader<FinnishedSchminputConfigSerialization>,
+    mut finnish_signal: MessageWriter<FinnishedSavingSchminputConfig>,
 ) {
     let Some(path) = config_path.path_buf() else {
         error!("unable to get config path");
         return;
     };
 
-    if let Some(dir) = path.parent() {
-        if let Err(err) = fs::create_dir_all(dir) {
-            error!("unable to create parrent dirs for config file: {err}");
-        }
+    if let Some(dir) = path.parent()
+        && let Err(err) = fs::create_dir_all(dir)
+    {
+        error!("unable to create parrent dirs for config file: {err}");
     }
 
     for output in serialized.read() {
@@ -117,7 +117,7 @@ fn save_config(
 }
 fn load_config(
     config_path: Res<ConfigFilePath>,
-    mut request_deserialize: EventWriter<DeserializeSchminputConfig>,
+    mut request_deserialize: MessageWriter<DeserializeSchminputConfig>,
 ) {
     let Some(path) = config_path.path_buf() else {
         error!("unable to get config path");

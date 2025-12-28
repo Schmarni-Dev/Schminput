@@ -14,20 +14,20 @@ pub struct PersistentBindingsPlugin;
 
 impl Plugin for PersistentBindingsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<DeserializeSchminputConfig>();
-        app.add_event::<SerializeSchminputConfig>();
-        app.add_event::<FinnishedSchminputConfigSerialization>();
-        app.add_event::<FinnishedSchminputConfigDeserialization>();
+        app.add_message::<DeserializeSchminputConfig>();
+        app.add_message::<SerializeSchminputConfig>();
+        app.add_message::<FinnishedSchminputConfigSerialization>();
+        app.add_message::<FinnishedSchminputConfigDeserialization>();
         app.add_systems(
             PostUpdate,
             serialize_v1
-                .run_if(on_event::<SerializeSchminputConfig>)
+                .run_if(on_message::<SerializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Serialize),
         );
         app.add_systems(
             PostUpdate,
             deserialize_v1
-                .run_if(on_event::<DeserializeSchminputConfig>)
+                .run_if(on_message::<DeserializeSchminputConfig>)
                 .in_set(PersistentBindingsSet::Deserialize),
         );
     }
@@ -39,18 +39,18 @@ fn implicit_table() -> toml_edit::Item {
     toml_edit::Item::Table(w)
 }
 
-#[derive(Event, Clone)]
+#[derive(Message, Clone)]
 pub struct DeserializeSchminputConfig {
     pub config: String,
 }
-#[derive(Event, Clone)]
+#[derive(Message, Clone)]
 pub struct FinnishedSchminputConfigDeserialization;
 
-#[derive(Event, Clone)]
+#[derive(Message, Clone)]
 pub struct SerializeSchminputConfig {
     pub base_config: String,
 }
-#[derive(Event, Clone)]
+#[derive(Message, Clone)]
 pub struct FinnishedSchminputConfigSerialization {
     pub output: String,
 }
@@ -61,8 +61,8 @@ type XrBindings<'a> = &'a OxrBindings;
 type XrBindings = ();
 
 fn serialize_v1(
-    mut request: EventReader<SerializeSchminputConfig>,
-    mut respone: EventWriter<FinnishedSchminputConfigSerialization>,
+    mut request: MessageReader<SerializeSchminputConfig>,
+    mut respone: MessageWriter<FinnishedSchminputConfigSerialization>,
     mut action_query: Query<(
         Option<&KeyboardBindings>,
         Option<&MouseBindings>,
@@ -194,8 +194,8 @@ fn serialize_v1(
 }
 
 fn deserialize_v1(
-    mut request: EventReader<DeserializeSchminputConfig>,
-    mut respone: EventWriter<FinnishedSchminputConfigDeserialization>,
+    mut request: MessageReader<DeserializeSchminputConfig>,
+    mut respone: MessageWriter<FinnishedSchminputConfigDeserialization>,
     mut action_query: Query<(Entity, &Action)>,
     set_query: Query<(&ActionSet, &ActionsInSet)>,
     mut cmds: Commands,

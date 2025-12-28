@@ -4,7 +4,7 @@ use bevy::{
     ecs::{entity::EntityHashMap, system::SystemId}, platform::collections::{HashMap, HashSet}, prelude::*
 };
 
-use crate::{ActionSet, ActionsInSet, SchminputSet};
+use crate::{ActionSet, ActionsInSet, SchminputSystems};
 
 pub struct PrioritiesPlugin;
 impl Plugin for PrioritiesPlugin {
@@ -12,7 +12,7 @@ impl Plugin for PrioritiesPlugin {
         app.init_resource::<BindingIdSystems>();
         app.add_systems(
             PreUpdate,
-            system.in_set(SchminputSet::CalculateBindingCollisions),
+            system.in_set(SchminputSystems::CalculateBindingCollisions),
         );
     }
 }

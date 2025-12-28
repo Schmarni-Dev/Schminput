@@ -14,14 +14,14 @@ fn main() {
     )));
     app.add_plugins(DefaultPlugins);
     app.add_plugins(DefaultSchminputPlugins);
-    app.add_plugins(EguiPlugin);
+    app.add_plugins(EguiPlugin::default());
     app.add_plugins(DefaultSchminputRebindingPlugins);
 
     app.add_systems(Startup, setup);
     app.run();
 }
 fn setup(mut cmds: Commands) {
-    let set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let set = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
     use schminput::keyboard::KeyboardBinding as KbB;
     cmds.spawn((
         Action::new("move", "Move", set),

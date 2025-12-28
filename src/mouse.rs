@@ -3,7 +3,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use bevy::{input::mouse::MouseMotion, prelude::*};
 
 use crate::{
-    impl_helpers::{BindingValue, ProviderParam}, priorities::PriorityAppExt as _, subaction_paths::{SubactionPathCreated, SubactionPathStr}, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet
+    impl_helpers::{BindingValue, ProviderParam}, priorities::PriorityAppExt as _, subaction_paths::{SubactionPathCreated, SubactionPathStr}, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSystems
 };
 
 pub struct MousePlugin;
@@ -12,11 +12,11 @@ impl Plugin for MousePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            sync_actions.in_set(SchminputSet::SyncInputActions),
+            sync_actions.in_set(SchminputSystems::SyncInputActions),
         );
         app.add_systems(
             PreUpdate,
-            handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
+            handle_new_subaction_paths.in_set(SchminputSystems::HandleNewSubactionPaths),
         );
         app.add_binding_id_system(
             "schminput:mouse",
@@ -50,7 +50,7 @@ fn get_binding_id(binding: &AnyMouseBinding) -> u64 {
 
 fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut event: EventReader<SubactionPathCreated>,
+    mut event: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (entity, path) in event
@@ -88,7 +88,7 @@ pub fn sync_actions(
     mut query: ProviderParam<&MouseBindings, &MouseSubactionPath>,
     time: Res<Time>,
     input: Res<ButtonInput<MouseButton>>,
-    mut delta_motion: EventReader<MouseMotion>,
+    mut delta_motion: MessageReader<MouseMotion>,
 ) {
     query.run(
         "schminput:mouse",

@@ -14,7 +14,7 @@ use crate::{
     prelude::RequestedSubactionPaths,
     priorities::PriorityAppExt as _,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
-    Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
+    Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSystems,
 };
 
 pub struct GamepadPlugin;
@@ -28,16 +28,16 @@ impl Plugin for GamepadPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            sync_actions.in_set(SchminputSet::SyncInputActions),
+            sync_actions.in_set(SchminputSystems::SyncInputActions),
         );
-        app.add_systems(PreUpdate, clear_haptic.in_set(SchminputSet::ClearValues));
+        app.add_systems(PreUpdate, clear_haptic.in_set(SchminputSystems::ClearValues));
         app.add_systems(
             PostUpdate,
-            sync_haptics.in_set(SchminputSet::SyncOutputActions),
+            sync_haptics.in_set(SchminputSystems::SyncOutputActions),
         );
         app.add_systems(
             PreUpdate,
-            handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
+            handle_new_subaction_paths.in_set(SchminputSystems::HandleNewSubactionPaths),
         );
         app.add_binding_id_system(
             "schminput:gamepad",
@@ -59,7 +59,7 @@ fn get_binding_id(binding: &GamepadBinding) -> u64 {
 
 fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut reader: EventReader<SubactionPathCreated>,
+    mut reader: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (e, str) in reader
@@ -164,7 +164,7 @@ fn clear_haptic(mut query: Query<&mut GamepadHapticOutput>) {
 }
 
 fn sync_haptics(
-    mut gamepad_haptic_event: EventWriter<GamepadRumbleRequest>,
+    mut gamepad_haptic_event: MessageWriter<GamepadRumbleRequest>,
     haptic_query: Query<(
         &GamepadHapticOutputBindings,
         &GamepadHapticOutput,

@@ -19,7 +19,7 @@ use crate::{
     binding_modification::{BindingModifications, PremultiplyDeltaSecsModification},
     subaction_paths::{RequestedSubactionPaths, SubactionPathStr},
     xr::SpaceActionValue,
-    Action, ActionSet, BoolActionValue, F32ActionValue, SchminputSet, Vec2ActionValue,
+    Action, ActionSet, BoolActionValue, F32ActionValue, SchminputSystems, Vec2ActionValue,
 };
 
 pub const OCULUS_TOUCH_PROFILE: &str = "/interaction_profiles/oculus/touch_controller";
@@ -43,7 +43,7 @@ impl Plugin for OxrInputPlugin {
             )
                 .chain()
                 .run_if(openxr_session_running)
-                .in_set(SchminputSet::SyncInputActions)
+                .in_set(SchminputSystems::SyncInputActions)
                 .before(XrSpaceSyncSet),
         );
         app.add_systems(
@@ -147,7 +147,7 @@ fn sync_non_blocking_action_sets(world: &mut World) {
 #[cfg(not(target_family = "wasm"))]
 fn sync_action_sets(
     query: Query<(&OxrActionSet, &ActionSet)>,
-    mut sync_set: EventWriter<OxrSyncActionSet>,
+    mut sync_set: MessageWriter<OxrSyncActionSet>,
 ) {
     let sets = query
         .iter()
@@ -157,7 +157,7 @@ fn sync_action_sets(
 }
 
 #[cfg(not(target_family = "wasm"))]
-fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrAttachActionSet>) {
+fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: MessageWriter<OxrAttachActionSet>) {
     for set in &query {
         suggest.write(OxrAttachActionSet(set.0.clone()));
     }
@@ -166,7 +166,7 @@ fn attach_action_sets(query: Query<&OxrActionSet>, mut suggest: EventWriter<OxrA
 #[cfg(not(target_family = "wasm"))]
 fn suggest_bindings(
     query: Query<(&OxrBindings, &OxrAction, Entity), Without<BindingsSuggested>>,
-    mut suggest: EventWriter<OxrSuggestActionBinding>,
+    mut suggest: MessageWriter<OxrSuggestActionBinding>,
     mut cmds: Commands,
 ) {
     for (bindings, action, entity) in &query {

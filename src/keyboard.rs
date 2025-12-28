@@ -6,18 +6,18 @@ use crate::{
     impl_helpers::{BindingValue, ProviderParam},
     priorities::PriorityAppExt,
     subaction_paths::{SubactionPathCreated, SubactionPathStr},
-    ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSet,
+    ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSystems,
 };
 
 impl Plugin for KeyboardPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PreUpdate,
-            sync_actions.in_set(SchminputSet::SyncInputActions),
+            sync_actions.in_set(SchminputSystems::SyncInputActions),
         );
         app.add_systems(
             PreUpdate,
-            handle_new_subaction_paths.in_set(SchminputSet::HandleNewSubactionPaths),
+            handle_new_subaction_paths.in_set(SchminputSystems::HandleNewSubactionPaths),
         );
         app.add_binding_id_system(
             "schminput:keyboard",
@@ -39,7 +39,7 @@ fn get_binding_id(binding: &KeyboardBinding) -> u64 {
 
 pub fn handle_new_subaction_paths(
     query: Query<&SubactionPathStr>,
-    mut reader: EventReader<SubactionPathCreated>,
+    mut reader: MessageReader<SubactionPathCreated>,
     mut cmds: Commands,
 ) {
     for (e, str) in reader

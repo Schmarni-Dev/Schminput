@@ -3,12 +3,12 @@ use std::borrow::Cow;
 
 use bevy::prelude::*;
 use bevy_egui::egui::{
-    self, collapsing_header::CollapsingState, CollapsingHeader, Color32, DragValue, Id, RichText,
-    Ui,
+    self, CollapsingHeader, Color32, DragValue, Id, RichText, Ui,
+    collapsing_header::CollapsingState,
 };
 use schminput::{
-    gamepad::GamepadHapticType, prelude::*, ActionsInSet, ButtonInputBeheavior,
-    InputAxis, InputAxisDirection,
+    ActionsInSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, gamepad::GamepadHapticType,
+    prelude::*,
 };
 
 #[cfg(feature = "xr")]
@@ -90,14 +90,14 @@ pub fn draw_rebinding_ui(
     action_type_query: &ActionStateQuery,
     set_query: &Query<(&ActionSet, &ActionsInSet)>,
     waiting: &WaitingForInput,
-    mut request_keyboard: EventWriter<RequestKeyboardRebinding>,
-    mut mouse_rebind: EventWriter<RequestMouseRebinding>,
-    mut gamepad_rebind: EventWriter<RequestGamepadRebinding>,
-    mut reset_bindings: EventWriter<ResetToDefautlBindings>,
-    mut request_save: EventWriter<SaveSchminputConfig>,
-    mut request_load: EventWriter<LoadSchminputConfig>,
-    #[cfg(feature = "xr")] mut request_session_restart: EventWriter<RestartXrSession>,
-    #[cfg(feature = "xr")] mut openxr_rebind: EventWriter<RequestOpenXrRebinding>,
+    mut request_keyboard: MessageWriter<RequestKeyboardRebinding>,
+    mut mouse_rebind: MessageWriter<RequestMouseRebinding>,
+    mut gamepad_rebind: MessageWriter<RequestGamepadRebinding>,
+    mut reset_bindings: MessageWriter<ResetToDefautlBindings>,
+    mut request_save: MessageWriter<SaveSchminputConfig>,
+    mut request_load: MessageWriter<LoadSchminputConfig>,
+    #[cfg(feature = "xr")] mut request_session_restart: MessageWriter<RestartXrSession>,
+    #[cfg(feature = "xr")] mut openxr_rebind: MessageWriter<RequestOpenXrRebinding>,
 ) {
     if waiting.waiting() {
         ui.heading("Waiting for input");
@@ -162,15 +162,15 @@ pub fn draw_rebinding_ui(
                                 },
                                 |ui| {
                                     // always triggers change detection
-                                    if let Some(mouse) = mouse.as_mut() {
-                                        if let Some(movement) = mouse.movement.as_mut() {
-                                            draw_mouse_moiton_binding(
-                                                ui,
-                                                movement,
-                                                entity,
-                                                &mut mouse_rebind,
-                                            );
-                                        }
+                                    if let Some(mouse) = mouse.as_mut()
+                                        && let Some(movement) = mouse.movement.as_mut()
+                                    {
+                                        draw_mouse_moiton_binding(
+                                            ui,
+                                            movement,
+                                            entity,
+                                            &mut mouse_rebind,
+                                        );
                                     }
                                 }
                             );
@@ -230,34 +230,37 @@ pub fn draw_rebinding_ui(
                                 }
                             );
                         }
-                        if action_type == ActionType::GamepadHaptic {
-                            if let Some(mut gamepad_haptics) = gamepad_haptics {
-                                collapsable!(
-                                    ui,
-                                    entity,
-                                    "Gamepad Haptics:",
+                        if action_type == ActionType::GamepadHaptic
+                            && let Some(mut gamepad_haptics) = gamepad_haptics
+                        {
+                            collapsable!(
+                                ui,
+                                entity,
+                                "Gamepad Haptics:",
+                                {
+                                    gamepad_haptics.bindings.push(GamepadHapticType::Weak);
+                                },
+                                |ui| {
+                                    let mut delete = None;
+                                    for (binding_index, binding) in
+                                        gamepad_haptics.bindings.iter_mut().enumerate()
                                     {
-                                        gamepad_haptics.bindings.push(GamepadHapticType::Weak);
-                                    },
-                                    |ui| {
-                                        let mut delete = None;
-                                        for (binding_index, binding) in
-                                            gamepad_haptics.bindings.iter_mut().enumerate()
-                                        {
-                                            ui.horizontal(|ui| {
-                                                egui::ComboBox::new(
-                                                    BindingIdHash {
-                                                        binding_index,
-                                                        action: entity,
-                                                        id: "gamepad_haptics",
-                                                    },
-                                                    "Haptics Type",
-                                                )
-                                                .width(0.0)
-                                                .selected_text(
-                                                    RichText::new(binding.to_string()).monospace(),
-                                                )
-                                                .show_ui(ui, |ui| {
+                                        ui.horizontal(|ui| {
+                                            egui::ComboBox::new(
+                                                BindingIdHash {
+                                                    binding_index,
+                                                    action: entity,
+                                                    id: "gamepad_haptics",
+                                                },
+                                                "Haptics Type",
+                                            )
+                                            .width(0.0)
+                                            .selected_text(
+                                                RichText::new(binding.to_string()).monospace(),
+                                            )
+                                            .show_ui(
+                                                ui,
+                                                |ui| {
                                                     ui.selectable_value(
                                                         binding,
                                                         GamepadHapticType::Weak,
@@ -274,18 +277,18 @@ pub fn draw_rebinding_ui(
                                                         )
                                                         .monospace(),
                                                     );
-                                                });
-                                                if ui.button(get_delete_text()).clicked() {
-                                                    delete = Some(binding_index);
-                                                }
-                                            });
-                                        }
-                                        if let Some(index) = delete {
-                                            gamepad_haptics.bindings.remove(index);
-                                        }
+                                                },
+                                            );
+                                            if ui.button(get_delete_text()).clicked() {
+                                                delete = Some(binding_index);
+                                            }
+                                        });
                                     }
-                                );
-                            }
+                                    if let Some(index) = delete {
+                                        gamepad_haptics.bindings.remove(index);
+                                    }
+                                }
+                            );
                         }
                         #[cfg(feature = "xr")]
                         if let Some(mut bindings) = xr_bindings {
@@ -340,7 +343,7 @@ pub fn draw_openxr_interaction_profile(
     bindings: &mut [Cow<'static, str>],
     action: Entity,
     interaction_profile_index: usize,
-    request: &mut EventWriter<RequestOpenXrRebinding>,
+    request: &mut MessageWriter<RequestOpenXrRebinding>,
 ) {
     CollapsingState::load_with_default_open(
         ui.ctx(),
@@ -382,7 +385,7 @@ pub fn draw_gamepad_binding(
     is_bool_action: bool,
     binding_index: usize,
     action: Entity,
-    gamepad_rebind: &mut EventWriter<RequestGamepadRebinding>,
+    gamepad_rebind: &mut MessageWriter<RequestGamepadRebinding>,
 ) {
     CollapsingState::load_with_default_open(
         ui.ctx(),
@@ -429,7 +432,7 @@ pub fn draw_mouse_button_binding(
     is_bool_action: bool,
     binding_index: usize,
     action: Entity,
-    mouse_rebind: &mut EventWriter<RequestMouseRebinding>,
+    mouse_rebind: &mut MessageWriter<RequestMouseRebinding>,
 ) {
     CollapsingState::load_with_default_open(
         ui.ctx(),
@@ -473,7 +476,7 @@ pub fn draw_mouse_moiton_binding(
     ui: &mut Ui,
     binding: &mut MouseMotionBinding,
     action: Entity,
-    mouse_rebind: &mut EventWriter<RequestMouseRebinding>,
+    mouse_rebind: &mut MessageWriter<RequestMouseRebinding>,
 ) {
     ui.horizontal(|ui| {
         ui.label("sensitivity: ");
@@ -494,7 +497,7 @@ pub fn draw_keyboard_binding(
     is_bool_action: bool,
     binding_index: usize,
     action: Entity,
-    request_keyboard: &mut EventWriter<RequestKeyboardRebinding>,
+    request_keyboard: &mut MessageWriter<RequestKeyboardRebinding>,
 ) {
     CollapsingState::load_with_default_open(
         ui.ctx(),

@@ -70,10 +70,10 @@ pub struct ProviderParam<
     pub path_query: Query<'w, 's, PathData, PathFilter>,
 }
 impl<
-        ActionData: QueryData + 'static,
-        PathData: QueryData + 'static,
-        PathFilter: QueryFilter + 'static,
-    > ProviderParam<'_, '_, ActionData, PathData, PathFilter>
+    ActionData: QueryData + 'static,
+    PathData: QueryData + 'static,
+    PathFilter: QueryFilter + 'static,
+> ProviderParam<'_, '_, ActionData, PathData, PathFilter>
 {
     pub fn run<BindingData>(
         &mut self,
@@ -81,14 +81,14 @@ impl<
         binding_id: impl Fn(&BindingData) -> u64,
         path_matches: impl Fn(
             &BindingData,
-            &<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_>,
+            &<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_, '_>,
         ) -> bool,
-        bindings: impl Fn(&<ActionData as QueryData>::Item<'_>) -> Vec<BindingData>,
+        bindings: impl Fn(&<ActionData as QueryData>::Item<'_, '_>) -> Vec<BindingData>,
         mut update_for_binding: impl FnMut(
             &BindingData,
-            &mut <ActionData as QueryData>::Item<'_>,
+            &mut <ActionData as QueryData>::Item<'_, '_>,
 
-            Option<&<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_>>,
+            Option<&<<PathData as QueryData>::ReadOnly as QueryData>::Item<'_, '_>>,
             &GenericBindingData,
         ) -> Vec<BindingValue>,
     ) {
@@ -118,14 +118,13 @@ impl<
             let all_binding_values = binding_iter
                 .iter()
                 .flat_map(|binding_data| {
-                    if let Some(input) = input.as_ref() {
-                        if input
+                    if let Some(input) = input.as_ref()
+                        && input
                             .0
                             .get(&label_id)
                             .is_some_and(|v| v.contains(&binding_id(binding_data)))
-                        {
-                            return Vec::new();
-                        }
+                    {
+                        return Vec::new();
                     }
                     let mut binding_modifications = Modifications {
                         inner: modifications,
@@ -176,14 +175,13 @@ impl<
                 };
                 let mut out = Vec::<BindingValue>::new();
                 for binding in binding_iter.iter() {
-                    if let Some(input) = input {
-                        if input
+                    if let Some(input) = input
+                        && input
                             .0
                             .get(&label_id)
                             .is_some_and(|v| v.contains(&binding_id(binding)))
-                        {
-                            continue;
-                        }
+                    {
+                        continue;
                     }
                     if !path_matches(binding, &path_data) {
                         continue;

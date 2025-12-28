@@ -19,7 +19,7 @@ use priorities::PrioritiesPlugin;
 use subaction_paths::{RequestedSubactionPaths, SubactionPathMap, SubactionPathPlugin};
 
 #[derive(SystemSet, Clone, Copy, Debug, Reflect, Hash, PartialEq, Eq)]
-pub enum SchminputSet {
+pub enum SchminputSystems {
     HandleNewSubactionPaths,
     ClearValues,
     CalculateBindingCollisions,
@@ -36,19 +36,19 @@ impl Plugin for SchminputPlugin {
         app.configure_sets(
             PreUpdate,
             (
-                SchminputSet::HandleNewSubactionPaths,
-                SchminputSet::ClearValues,
-                SchminputSet::CalculateBindingCollisions,
-                SchminputSet::SyncInputActions,
+                SchminputSystems::HandleNewSubactionPaths,
+                SchminputSystems::ClearValues,
+                SchminputSystems::CalculateBindingCollisions,
+                SchminputSystems::SyncInputActions,
             )
                 .chain(),
         );
         // Probably not needed, but for reference,
-        app.configure_sets(PostUpdate, SchminputSet::SyncOutputActions);
+        app.configure_sets(PostUpdate, SchminputSystems::SyncOutputActions);
 
-        app.add_systems(PreUpdate, clean_bool.in_set(SchminputSet::ClearValues));
-        app.add_systems(PreUpdate, clean_f32.in_set(SchminputSet::ClearValues));
-        app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSet::ClearValues));
+        app.add_systems(PreUpdate, clean_bool.in_set(SchminputSystems::ClearValues));
+        app.add_systems(PreUpdate, clean_f32.in_set(SchminputSystems::ClearValues));
+        app.add_systems(PreUpdate, clean_vec2.in_set(SchminputSystems::ClearValues));
     }
 }
 

@@ -19,7 +19,7 @@ name = "egui_xr"
 required-features = ["egui", "xr"]
 
 [features]
-default = []
+default = ["egui", "xr"]
 xr = ["dep:bevy_mod_xr", "schminput/xr"]
 egui = ["dep:bevy_egui"]
 
@@ -27,13 +27,13 @@ egui = ["dep:bevy_egui"]
 schminput.workspace = true
 bevy.workspace = true
 bevy_mod_xr = { workspace = true, optional = true }
-bevy_egui = { version = "0.34.1", default-features = false, optional = true }
+bevy_egui = { version = "0.38", default-features = false, optional = true }
 toml_edit = { version = "0.22.20", features = ["serde"] }
 dirs = "5.0.1"
 atomicow = "1.0.0"
 
 [dev-dependencies]
-bevy_egui = { version = "0.34.1", features = [
+bevy_egui = { version = "0.38", features = [
 	"render",
 	"default_fonts",
 ], default-features = false }

@@ -3,8 +3,8 @@ use crate::runtime_rebinding::RequestOpenXrRebinding;
 #[cfg(feature = "xr")]
 use crate::xr_utils::RestartXrSession;
 use bevy::prelude::*;
-use bevy_egui::{egui, EguiContexts};
-use schminput::{prelude::*, ActionsInSet};
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass, egui};
+use schminput::{ActionsInSet, prelude::*};
 
 use crate::{
     config::{LoadSchminputConfig, SaveSchminputConfig},
@@ -24,7 +24,7 @@ impl Plugin for RebindingEguiWindowPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ShowEguiRebindingWindow>();
         app.add_systems(
-            Update,
+            EguiPrimaryContextPass,
             draw_ui.run_if(resource_equals(ShowEguiRebindingWindow(true))),
         );
     }
@@ -34,17 +34,20 @@ fn draw_ui(
     mut action_query: Query<ActionQueryData>,
     set_query: Query<(&ActionSet, &ActionsInSet)>,
     waiting: Res<WaitingForInput>,
-    request_keyboard: EventWriter<RequestKeyboardRebinding>,
+    request_keyboard: MessageWriter<RequestKeyboardRebinding>,
     action_type_query: ActionStateQuery,
-    reset_bindings: EventWriter<ResetToDefautlBindings>,
-    mouse_rebind: EventWriter<RequestMouseRebinding>,
-    gamepad_rebind: EventWriter<RequestGamepadRebinding>,
-    request_save: EventWriter<SaveSchminputConfig>,
-    request_load: EventWriter<LoadSchminputConfig>,
-    #[cfg(feature = "xr")] request_session_restart: EventWriter<RestartXrSession>,
-    #[cfg(feature = "xr")] openxr_rebind: EventWriter<RequestOpenXrRebinding>,
+    reset_bindings: MessageWriter<ResetToDefautlBindings>,
+    mouse_rebind: MessageWriter<RequestMouseRebinding>,
+    gamepad_rebind: MessageWriter<RequestGamepadRebinding>,
+    request_save: MessageWriter<SaveSchminputConfig>,
+    request_load: MessageWriter<LoadSchminputConfig>,
+    #[cfg(feature = "xr")] request_session_restart: MessageWriter<RestartXrSession>,
+    #[cfg(feature = "xr")] openxr_rebind: MessageWriter<RequestOpenXrRebinding>,
 ) {
-    egui::Window::new("Schminput Rebinding Ui").show(ctxs.ctx_mut(), |ui| {
+    let Ok(ctx) = ctxs.ctx_mut() else {
+        return;
+    };
+    egui::Window::new("Schminput Rebinding Ui").show(ctx, |ui| {
         crate::egui::draw_rebinding_ui(
             ui,
             &mut action_query,
