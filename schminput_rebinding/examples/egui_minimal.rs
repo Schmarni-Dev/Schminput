@@ -115,7 +115,6 @@ fn read_actions(
     let jumping = bool_action.get(actions.jump).unwrap().any;
     info!("jump: {}", jumping);
     if jumping {
-        // and maybe get_single_mut here
         haptic_action
             .get_mut(actions.jump_haptic)
             .unwrap()

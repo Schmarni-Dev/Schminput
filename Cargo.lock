@@ -4388,7 +4388,7 @@ dependencies = [
 
 [[package]]
 name = "schminput"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "atomicow",
  "bevy",
@@ -4399,7 +4399,7 @@ dependencies = [
 
 [[package]]
 name = "schminput_rebinding"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "atomicow",
  "bevy",
