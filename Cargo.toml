@@ -15,10 +15,14 @@ repository = "https://github.com/Schmarni-Dev/Schminput/"
 
 [workspace.dependencies]
 schminput = { path = ".", version = "0.4.0" }
-bevy = { version = "0.17", default-features = false }
-bevy_mod_xr = "0.4.0"
-bevy_mod_openxr = "0.4.0"
-openxr = { version = "0.19", default-features = false }
+bevy = { version = "0.18", default-features = false, features = [
+    "mouse",
+    "keyboard",
+    "gamepad",
+] }
+bevy_mod_xr = "0.5"
+bevy_mod_openxr = "0.5"
+openxr = "0.21"
 
 [lints.clippy]
 too_many_arguments = "allow"
