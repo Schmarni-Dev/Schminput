@@ -10,11 +10,11 @@ use bevy::{
 };
 
 use crate::{
+    Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSystems,
     impl_helpers::{BindingValue, GenericBindingData, ProviderParam},
     prelude::RequestedSubactionPaths,
     priorities::PriorityAppExt as _,
     subaction_paths::{SubactionPath, SubactionPathCreated, SubactionPathMap, SubactionPathStr},
-    Action, ActionSet, ButtonInputBeheavior, InputAxis, InputAxisDirection, SchminputSystems,
 };
 
 pub struct GamepadPlugin;
@@ -30,7 +30,10 @@ impl Plugin for GamepadPlugin {
             PreUpdate,
             sync_actions.in_set(SchminputSystems::SyncInputActions),
         );
-        app.add_systems(PreUpdate, clear_haptic.in_set(SchminputSystems::ClearValues));
+        app.add_systems(
+            PreUpdate,
+            clear_haptic.in_set(SchminputSystems::ClearValues),
+        );
         app.add_systems(
             PostUpdate,
             sync_haptics.in_set(SchminputSystems::SyncOutputActions),
@@ -64,7 +67,7 @@ fn handle_new_subaction_paths(
 ) {
     for (e, str) in reader
         .read()
-        .filter_map(|e| Some((e.0 .0, query.get(e.0 .0).ok()?)))
+        .filter_map(|e| Some((e.0.0, query.get(e.0.0).ok()?)))
     {
         let Some(str) = str.0.strip_prefix("/gamepad") else {
             continue;
@@ -320,7 +323,7 @@ fn handle_gamepad_inputs_new(
         true => gamepad.get_unclamped(binding.source),
         false => gamepad.get(binding.source),
     }) else {
-        warn!("gamepad.get returned None, idk what that means");
+        warn!("gamepad has no {}", binding.source);
         return BindingValue::default();
     };
     let bool = data.is_bool.then_some(v > 0.1);
@@ -584,7 +587,7 @@ impl std::fmt::Display for GamepadBindingSource {
             GamepadBindingSource::RightStickY => "Right Stick Y",
             GamepadBindingSource::OtherAxis(axis) => return f.write_str(&format!("Axis {}", axis)),
             GamepadBindingSource::OtherButton(button) => {
-                return f.write_str(&format!("Button {}", button))
+                return f.write_str(&format!("Button {}", button));
             }
             GamepadBindingSource::South => "South",
             GamepadBindingSource::East => "East",

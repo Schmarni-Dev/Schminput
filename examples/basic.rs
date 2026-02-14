@@ -72,8 +72,6 @@ fn read_actions(
     jump_action: Query<&BoolActionValue, With<JumpAction>>,
     mut jump_haptic_action: Query<&mut GamepadHapticOutput, With<JumpHapticAction>>,
 ) {
-    // you might want to use .get_single instead to handle a case where the action was destroyed
-    // (which never happens in the crate itself)
     info!("move: {}", move_action.single().unwrap().any);
     info!("look: {}", look_action.single().unwrap().any);
 

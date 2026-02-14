@@ -2,9 +2,9 @@ use bevy::{color::palettes::css, diagnostic::FrameTimeDiagnosticsPlugin, prelude
 use bevy_egui::EguiPlugin;
 use schminput::prelude::*;
 use schminput_rebinding::{
+    DefaultSchminputRebindingPlugins,
     config::{ConfigFilePath, LoadSchminputConfig},
     egui_window::ShowEguiRebindingWindow,
-    DefaultSchminputRebindingPlugins,
 };
 use std::path::PathBuf;
 
@@ -25,12 +25,12 @@ fn main() {
     app.insert_resource(ShowEguiRebindingWindow(true));
     app.insert_resource(ConfigFilePath::Path(PathBuf::from("./config/egui_xr.toml")));
     app.add_plugins(bevy_mod_openxr::add_xr_plugins(DefaultPlugins));
-    app.add_plugins(FrameTimeDiagnosticsPlugin);
+    app.add_plugins(FrameTimeDiagnosticsPlugin::default());
     app.add_plugins(schminput::DefaultSchminputPlugins);
     app.add_plugins(DefaultSchminputRebindingPlugins);
-    app.world_mut().send_event(LoadSchminputConfig);
+    app.world_mut().write_message(LoadSchminputConfig);
 
-    app.add_plugins(EguiPlugin);
+    app.add_plugins(EguiPlugin::default());
     app.add_systems(Startup, setup);
     app.add_systems(Startup, setup_env);
     app.add_systems(Update, run);
@@ -39,8 +39,8 @@ fn main() {
 }
 fn setup(mut cmds: Commands) {
     cmds.spawn(Camera3d::default());
-    let player_set = cmds.spawn(ActionSet::new("movement", "Movement")).id();
-    let pose_set = cmds.spawn(ActionSet::new("core", "Core")).id();
+    let player_set = cmds.spawn(ActionSet::new("movement", "Movement", 1)).id();
+    let pose_set = cmds.spawn(ActionSet::new("core", "Core", 0)).id();
     cmds.spawn((
         Action::new("move", "Move", player_set),
         MoveAction,
@@ -97,16 +97,16 @@ fn setup(mut cmds: Commands) {
 }
 
 fn run(
-    move_action: Query<&Vec2ActionValue, With<MoveAction>>,
-    look_action: Query<&F32ActionValue, With<LookAction>>,
-    jump_action: Query<&BoolActionValue, With<JumpAction>>,
+    move_action: Single<&Vec2ActionValue, With<MoveAction>>,
+    look_action: Single<&F32ActionValue, With<LookAction>>,
+    jump_action: Single<&BoolActionValue, With<JumpAction>>,
     left_hand: Query<&GlobalTransform, With<HandLeft>>,
     right_hand: Query<&GlobalTransform, With<HandRight>>,
     mut gizmos: Gizmos,
 ) {
-    // info!("move: {}", move_action.single().any);
-    // info!("look: {}", look_action.single().any);
-    // info!("jump: {}", jump_action.single().any);
+    info!("move: {}", move_action.any);
+    info!("look: {}", look_action.any);
+    info!("jump: {}", jump_action.any);
     for hand in left_hand.into_iter() {
         let pose = hand.to_isometry();
         gizmos.sphere(pose, 0.01, css::ORANGE_RED);
